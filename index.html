@@ -19,8 +19,7 @@
     #root { min-height: 100vh; min-height: -webkit-fill-available; }
     * { -webkit-tap-highlight-color: transparent; }
     body { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
-    input[type="range"] { -webkit-appearance: none; height: 4px; border-radius: 2px;
-      background: #2a2d34; outline: none; }
+    input[type="range"] { -webkit-appearance: none; height: 4px; border-radius: 2px; background: #2a2d34; outline: none; }
     input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px;
       border-radius: 50%; background: currentColor; cursor: pointer; }
     select { -webkit-appearance: none; appearance: none; }
@@ -30,7 +29,9 @@
 <body>
   <div id="root"></div>
   <script type="text/babel" data-presets="react">
-const { useState, useEffect } = React;
+const { useState, useEffect, Fragment } = React;
+
+
 
 
 // ─── THEME ───────────────────────────────────────────────────────────────────
@@ -190,6 +191,282 @@ const TYPE_COLOR = {
 
 const DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 
+// ─── CAMP MANAGEMENT — MOORLANDS CHECKLIST DATA ──────────────────────────────
+const CAMP_DAILY = {
+  morning: {
+    label: "Morning", time: "8:00 – 9:30 am",
+    groups: [
+      { group: "Facilities & Site", items: [
+        { id:"site_walk", text:"Walk the full site — buildings, grounds, pool area for overnight issues" },
+        { id:"water_am", text:"Confirm water supply is running and adequate", critical:true },
+        { id:"electrical", text:"Check electrical systems — flag anything unusual to Groundsman", critical:true },
+        { id:"plumbing", text:"Check plumbing — toilets, showers, sinks operational" },
+        { id:"pool_check", text:"Confirm pool is operational and safe — water quality, safety equipment", critical:true },
+        { id:"groundsman_checkin", text:"Check in with Groundsman — overnight issues? Repairs needed today?" },
+        { id:"driver_checkin", text:"Check in with Driver — vehicle availability confirmed for the day" },
+      ]},
+      { group: "Kitchen & Food", items: [
+        { id:"kitchen_checkin", text:"Check in with kitchen staff — meals on schedule" },
+        { id:"menu_review", text:"Review today's menu — approve any necessary substitutions" },
+        { id:"kitchen_setup", text:"Supervise kitchen staff setup — confirm standards maintained" },
+        { id:"food_supplies", text:"Confirm food and tuck supplies are adequate for the day" },
+        { id:"medicine_chest_am", text:"Check Medicine Chest — resupply anything running low", critical:true },
+      ]},
+      { group: "Administration & Registration", items: [
+        { id:"emails_am", text:"Check emails — reply to any bookings correspondence" },
+        { id:"registration_review", text:"Review online registration portal — process new registrations", critical:true },
+        { id:"schedule_review", text:"Review today's schedule — arrivals, departures, special groups" },
+        { id:"nastasia_checkin", text:"Check in with Nastasia — pending payments, invoices, correspondence?" },
+        { id:"committee_check", text:"Check for any Camp Committee Planning Meeting scheduled" },
+      ]},
+    ]
+  },
+  midday: {
+    label: "Midday", time: "12:00 – 1:00 pm",
+    groups: [
+      { group: "Midday Walkthrough", items: [
+        { id:"water_mid", text:"Confirm water supply is still running and adequate", critical:true },
+        { id:"active_walkthrough", text:"Walkthrough active camp areas — check in with Commandants" },
+        { id:"repair_followup", text:"Address any repair requests or complaints from the morning" },
+        { id:"tuck_restock", text:"Tuck Shop: restock shelves, verify tuck sheets are current" },
+        { id:"activities_check", text:"Confirm afternoon activities have right games/craft equipment" },
+        { id:"vehicle_fuel", text:"Check vehicle is fuelled and available if transport needed today" },
+        { id:"kitchen_pm_track", text:"Confirm kitchen staff are on track for afternoon/dinner service" },
+      ]},
+    ]
+  },
+  evening: {
+    label: "Evening", time: "After Dinner",
+    groups: [
+      { group: "Close Out", items: [
+        { id:"final_walkthrough", text:"Final site walkthrough — secure buildings, kitchen closed properly" },
+        { id:"campers_accounted", text:"Confirm all campers are accounted for and settled" },
+        { id:"kitchen_brief_tomorrow", text:"Brief kitchen staff on tomorrow's menu and schedule changes" },
+        { id:"emails_pm", text:"Check emails — respond to bookings correspondence" },
+        { id:"maintenance_log", text:"Log any maintenance issues for morning follow-up" },
+        { id:"payment_list_check", text:"Confirm Friday payment list is building correctly with Nastasia" },
+        { id:"board_followup", text:"Note anything needing Board or support contact follow-up (Ben/Jessica)" },
+      ]},
+    ]
+  },
+};
+
+const CAMP_WEEKLY = {
+  Sun: { label:"Sunday — Session Opens", note:"First full day of the new session. Set the tone.", items: [
+    { id:"w_sun_facilities", text:"Final check — all facilities clean and ready from Saturday handover" },
+    { id:"w_sun_systems", text:"Confirm pool, water, electrical, plumbing all operational", critical:true },
+    { id:"w_sun_welcome", text:"Welcome Commandants — walk them through the full site" },
+    { id:"w_sun_orient", text:"Orient Commandants: emergency procedures, rules, Medicine Chest location", critical:true },
+    { id:"w_sun_tuck_open", text:"Open Tuck Shop — verify opening stock matches inventory sheet" },
+    { id:"w_sun_equipment", text:"Distribute games and craft equipment to activity areas" },
+    { id:"w_sun_meals", text:"Confirm full week meal schedule with kitchen staff" },
+    { id:"w_sun_transport", text:"Confirm transport schedule for the week with Driver and Commandants" },
+    { id:"w_sun_registration", text:"Confirm online registration is complete — no outstanding items", critical:true },
+    { id:"w_sun_faith", text:"Verify group's Statement of Faith and camp rules compliance on file", critical:true },
+  ]},
+  Mon: { label:"Monday — Mid-Week Steady", note:"Daily routines, every single day.", items: [
+    { id:"w_mon_daily", text:"Complete all daily routines (morning, midday, evening)" },
+    { id:"w_mon_inspection", text:"Mid-week site inspection — check for building or equipment wear" },
+    { id:"w_mon_tuck", text:"Tuck sheets: review balances, flag discrepancies early" },
+    { id:"w_mon_bookings", text:"Follow up on any pending bookings correspondence" },
+    { id:"w_mon_committee", text:"Liaise with Summer Camp Committee Chairman as needed" },
+  ]},
+  Tue: { label:"Tuesday — Mid-Week Steady", note:"Daily routines, every single day.", items: [
+    { id:"w_tue_daily", text:"Complete all daily routines (morning, midday, evening)" },
+    { id:"w_tue_caterers", text:"Liaise with Caterers if catered camp — confirm menus and logistics" },
+    { id:"w_tue_treasurer", text:"Liaise with Treasurer if financial questions arise" },
+    { id:"w_tue_stock", text:"Check stock levels — begin ordering food/tuck for incoming session" },
+    { id:"w_tue_next_reg", text:"Confirm next session's group registration — Statement of Faith received?", critical:true },
+  ]},
+  Wed: { label:"Wednesday — Mid-Week Steady", note:"Daily routines, every single day.", items: [
+    { id:"w_wed_daily", text:"Complete all daily routines (morning, midday, evening)" },
+    { id:"w_wed_meeting", text:"Check for any Camp Committee Planning Meetings this week" },
+    { id:"w_wed_groundsman", text:"Check in with Groundsman on ongoing maintenance — follow up" },
+  ]},
+  Thu: { label:"Thursday — Pre-Turnover Prep Begins", note:"Start now so Saturday is never a scramble.", items: [
+    { id:"w_thu_reconcile", text:"Begin tuck shop reconciliation — count stock vs. tuck sheets" },
+    { id:"w_thu_source", text:"Begin sourcing/purchasing restocking items for tuck shop" },
+    { id:"w_thu_price", text:"Price all new tuck items before restocking" },
+    { id:"w_thu_cleaners", text:"Confirm cleaners scheduled, briefed, confirmed for Saturday", critical:true },
+    { id:"w_thu_equipment", text:"Check all games/craft equipment — repair or replace damaged items" },
+    { id:"w_thu_paylist", text:"Prepare Friday payment list with Nastasia — submit by EOD Thursday", critical:true },
+    { id:"w_thu_incoming", text:"Confirm incoming group's arrival time, headcount, special requirements" },
+    { id:"w_thu_outgoing", text:"Confirm outgoing group's departure logistics and time" },
+    { id:"w_thu_deepclean", text:"Inspect areas needing deep clean/repair — flag to Groundsman" },
+    { id:"w_thu_driver_sat", text:"Confirm Driver availability for Saturday transport needs" },
+  ]},
+  Fri: { label:"Friday — Payments & Final Prep", note:"Financial authorisation day. Do not leave to last minute.", items: [
+    { id:"w_fri_authorise", text:"Review and authorise all compiled bank transfers with Nastasia", critical:true },
+    { id:"w_fri_receipts", text:"Confirm all receipts/invoices came through office first", critical:true },
+    { id:"w_fri_tuck_final", text:"Finalise tuck shop reconciliation — calculate change owed" },
+    { id:"w_fri_change", text:"Prepare change for each camper — ready for Saturday morning" },
+    { id:"w_fri_kitchen_brief", text:"Brief kitchen staff on final meal, checkout logistics, post-camp cleaning" },
+    { id:"w_fri_dorm_assign", text:"Confirm dorm cleaning schedule — assign who does what Saturday" },
+    { id:"w_fri_medchest", text:"Restock Medicine Chest fully", critical:true },
+    { id:"w_fri_fuel", text:"Check vehicle fuel — ready for Saturday transport" },
+    { id:"w_fri_doublebook", text:"Final check of incoming group registration — no double bookings", critical:true },
+    { id:"w_fri_faith_incoming", text:"Confirm incoming group's Statement of Faith and rules compliance", critical:true },
+    { id:"w_fri_confirm_corr", text:"Send confirmation correspondence to incoming group if not done" },
+    { id:"w_fri_gas", text:"Track gas allowance for personal vehicle use — submit for reimbursement" },
+  ]},
+  Sat: { label:"Saturday — Turnaround", note:"See full Saturday Turnaround Protocol below.", items: [] },
+};
+
+const CAMP_SATURDAY = [
+  { phase:"Phase 1 — Departure", time:"7:00 – 9:00 am", target:"Every camper off-site, gates secured by 9:00 am", items:[
+    { id:"sat_breakfast", text:"Confirm breakfast is served and cleared" },
+    { id:"sat_tuck_settle", text:"Tuck Shop: distribute remaining change — verify EVERY name settled", critical:true },
+    { id:"sat_forms", text:"Collect outstanding signed forms, medication, or medical items", critical:true },
+    { id:"sat_damage_walk", text:"Walkthrough with Commandants — inspect and document any damage", critical:true },
+    { id:"sat_checkout", text:"Sign off departure with Commandant — formal check-out completed" },
+    { id:"sat_damage_record", text:"Record any damage in writing — report to Chairman if significant", critical:true },
+    { id:"sat_equipment_return", text:"Ensure games/craft equipment is returned and properly stored" },
+    { id:"sat_secure_gates", text:"Secure all gates and access points after last vehicle leaves" },
+  ]},
+  { phase:"Phase 2 — Turnover", time:"9:00 am – 1:00 pm", target:"Supervise and inspect — cleaners and kitchen execute", items:[
+    { id:"sat_bedding", text:"Strip and replace ALL bedding — confirm cleaners, room by room" },
+    { id:"sat_dorm_clean", text:"Sweep, mop, and air all dorm rooms" },
+    { id:"sat_dorm_check", text:"Check windows, screens, doors — report broken items to Groundsman" },
+    { id:"sat_toiletries", text:"Restock any toiletries/consumables provided to campers" },
+    { id:"sat_dorm_inspect", text:"Final inspection walk of every dorm before sign-off" },
+    { id:"sat_kitchen_deep", text:"Deep clean kitchen — surfaces, appliances, floors, exhaust" },
+    { id:"sat_kitchen_equip", text:"Check all kitchen equipment operational (fridge temps, stoves, ovens)", critical:true },
+    { id:"sat_food_stock", text:"Confirm food supplies stocked for incoming group's first meal" },
+    { id:"sat_dining_reset", text:"Reset dining area — tables, chairs, condiments, setup complete" },
+    { id:"sat_bathrooms", text:"Deep clean all bathrooms and common areas" },
+    { id:"sat_grounds", text:"Inspect grounds for litter, damage, or hazards" },
+    { id:"sat_pool_area", text:"Check pool area — safety equipment in place, water quality tested", critical:true },
+    { id:"sat_perimeter", text:"Walk full site perimeter — Groundsman addresses urgent issues now" },
+    { id:"sat_tuck_count", text:"Count remaining stock — log full closing inventory" },
+    { id:"sat_tuck_restock", text:"Restock shelves with new items purchased for incoming session" },
+    { id:"sat_tuck_prices", text:"Update price tags on any items that have changed" },
+    { id:"sat_tuck_sheets_new", text:"Prepare fresh tuck sheets for incoming campers" },
+    { id:"sat_cashbox", text:"Secure cash box — correct float ready for Day 1 collection" },
+    { id:"sat_tuck_file", text:"File completed tuck sheets from departing session" },
+  ]},
+  { phase:"Phase 3 — Arrival", time:"1:00 – 3:00 pm", target:"Incoming group fully welcomed, checked in, oriented by 3:00 pm", items:[
+    { id:"sat_final_walk", text:"Final site walkthrough — confirm all areas clean, safe, ready", critical:true },
+    { id:"sat_kitchen_brief_arrival", text:"Brief kitchen staff on incoming group's first meal time" },
+    { id:"sat_entrance", text:"Station yourself at the entrance — be present and ready to welcome" },
+    { id:"sat_checkin_each", text:"Check in each camper/family against registration list", critical:true },
+    { id:"sat_tuck_collect", text:"Collect Tuck money Day 1 — log each camper's name and amount", critical:true },
+    { id:"sat_orient_commandants", text:"Orientate Commandants: full tour, emergency procedures, rules", critical:true },
+    { id:"sat_medchest_handover", text:"Hand over Medicine Chest to Commandant — confirm medical notes", critical:true },
+    { id:"sat_transport_confirm", text:"Confirm transport schedule and Driver availability for the week" },
+    { id:"sat_registration_filed", text:"Confirm online registration is complete and filed for this group", critical:true },
+  ]},
+  { phase:"End of Saturday — Close Out", time:"", target:"", items:[
+    { id:"sat_settled", text:"Confirm all campers are settled and accounted for" },
+    { id:"sat_damage_logged", text:"Confirm all damage from departing group logged and reported", critical:true },
+    { id:"sat_schedule_update", text:"Update bookings schedule — session confirmed, next session visible" },
+    { id:"sat_file_sheets", text:"File departure and opening tuck sheets together in session folder" },
+    { id:"sat_gas_record", text:"Confirm gas allowance record updated for Saturday vehicle use" },
+    { id:"sat_review_tomorrow", text:"Brief review — what needs attention first thing Sunday morning?" },
+  ]},
+];
+
+const CAMP_STANDING = [
+  { group:"Ongoing — Always On", items:[
+    "Be on-call during all camp sessions — available for enquiries, emergencies, and repairs",
+    "Emergency transport: arrange or provide it immediately when needed",
+    "Staff misconduct or concerns: report directly to Chairman of the Board — do NOT handle alone",
+    "Do NOT hire or dismiss staff — refer all staffing decisions to the Board",
+    "All receipts and invoices must go through the office FIRST before any processing",
+  ]},
+  { group:"Bookings & Scheduling", items:[
+    "Handle all bookings correspondence throughout the sabbatical period",
+    "Maintain the booking schedule — check for double bookings after every new enquiry",
+    "Confirm every group's Statement of Faith and camp rules compliance before confirming",
+    "Send confirmation correspondence promptly after each booking is confirmed",
+  ]},
+  { group:"Financial Administration", items:[
+    "Authorise all bank transfers — review Nastasia's compiled list every Friday",
+    "Any urgent payment ahead of Friday: Nastasia will flag — watch for her communication",
+    "All receipts and invoices: through the office first, always",
+    "Bookkeeping handled jointly by Nastasia and BACE — your role is authorisation and oversight",
+    "Track and submit gas allowance for personal vehicle use",
+  ]},
+];
+
+const CAMP_CONTACTS = [
+  { name:"Ben & Jessica Salmon", role:"Primary Support Contacts", when:"Guidance, consultation, escalation to Shanda" },
+  { name:"Shanda Pinnock", role:"Camp Manager (on sabbatical)", when:"Via Ben & Jessica only" },
+  { name:"Nastasia Matheson", role:"Office Administrator", when:"Payments, receipts, invoices, registrations" },
+  { name:"BACE", role:"Accounting Firm", when:"Financial queries — via Nastasia" },
+  { name:"Chairman of the Board", role:"Your reporting line", when:"Staff issues, major decisions, damage reports" },
+  { name:"Groundsman", role:"Site maintenance", when:"Repairs, grounds, facility faults" },
+  { name:"Driver", role:"Transport", when:"All vehicle and transport needs" },
+  { name:"Kitchen Staff", role:"Catering", when:"Meals, menu changes, kitchen concerns" },
+  { name:"Cleaners", role:"Site cleaning", when:"Cleaning schedules and standards" },
+];
+
+const CAMP_FIVE_RULES = [
+  "Never hire or dismiss staff — all staffing decisions go to the Board",
+  "Never process a receipt or invoice that has not come through the office first",
+  "Never confirm a booking without verifying Statement of Faith compliance",
+  "Never authorise a bank transfer without reviewing it — do not rubber-stamp",
+  "Never handle staff misconduct alone — report immediately to the Chairman of the Board",
+];
+
+// ─── MOCHA TRAINING DATA ──────────────────────────────────────────────────────
+const MOCHA_PHASES = [
+  { key:"phase1", label:"Phase 1: Foundation", dates:"Jun 17 – Jul 7", color:"#5bb8a0", goal:"Build the good student. Name, sit, down, stand, come, leave it, crate love, potty spot, daily handling." },
+  { key:"phase2", label:"Phase 2: Level 2 Training", dates:"Jul 8 – Aug 4", color:"#c4873a", goal:"Proof, distance, distraction, real world. Signals replace lures. Stay to 10+ sec. Recall to 20ft. Heel in public." },
+  { key:"phase3", label:"Phase 3: Real World Proof", dates:"Aug 5 – Sep 2+", color:"#a07cc4", goal:"3 environments for every command. Off-leash recall. Wipe feet. Sep 2: first enclosed off-leash test." },
+];
+
+function mochaPhaseForDate(d) {
+  if (d < new Date("2026-07-08")) return "phase1";
+  if (d < new Date("2026-08-05")) return "phase2";
+  return "phase3";
+}
+
+const MOCHA_COMMANDS = [
+  "Name Recognition","Sit","Down","Stand","Come / Recall","Food Protocol — eye contact",
+  "Leave It","UP (surfaces)","Stay / Wait","OFF — no jumping","Place / Bed","Door Wait",
+  "Heel / Let's Go","Wipe Feet","Find It / Search","Bark on Command",
+];
+
+const MOCHA_SESSION_TEMPLATE = [
+  { id:"energy_burn", label:"Energy Burn", icon:"🐾", note:"Always first. No exceptions. The teapot principle — let the steam out before training." },
+  { id:"training", label:"Training", icon:"🎯", note:"Base pattern opens every session (sit → down → stand). Then this week's focus skill." },
+  { id:"handling", label:"Handling", icon:"👋", note:"Daily body exam — ears, paws, mouth, tail. Kids rotate. Log who did it." },
+  { id:"free_play", label:"Free Play", icon:"🎾", note:"Supervised. Tug toy only — never hands or feet as toys." },
+  { id:"food_protocol", label:"Food Protocol", icon:"🍽️", note:"Sit → bowl placed → wait for eye contact → YES + point → release word → she eats." },
+  { id:"potty", label:"Potty", icon:"🌿", note:"Same spot, same cue, every time." },
+];
+
+const MOCHA_FOOD_PROTOCOL = [
+  "Prepare bowl. Hold at chest. Wait.",
+  "Ask for SIT once. Wait. Do not repeat.",
+  "Lower bowl slowly. She dives forward → pick it back up. Say nothing. Try again.",
+  "Bowl on floor. She must not eat. Say nothing. Wait for her eyes to find yours.",
+  "The MOMENT she looks at you — say YES! and point at her.",
+  "Say your release word (okay) — now she eats. Same word every single time.",
+];
+
+const MOCHA_BITING_PROTOCOL = [
+  { situation:"She bites skin", response:'"OUCH" → freeze → turn away' },
+  { situation:"Keeps biting", response:"Stand up → walk away → 30 sec" },
+  { situation:"Bites clothes/feet", response:"Redirect to tug toy immediately" },
+  { situation:"Calm, 4 paws down", response:"Quietly re-engage. Reward calm." },
+];
+
+const MOCHA_CRATE_LAW = [
+  "If Mocha is in the crate she is invisible. No tapping. No talking. No letting her out.",
+  "Kong goes in 10 min BEFORE she does — let her follow it in herself.",
+  "If she cries: wait for a pause (even 2 seconds) — THEN open.",
+  "NEVER open the crate while she is actively crying. That teaches crying = door opens.",
+  "Crate after: every nap · meal · play session · any time you cannot supervise.",
+];
+
+// ─── HOMESCHOOL SKILL OPTIONS ─────────────────────────────────────────────────
+const HOMESCHOOL_SKILLS = [
+  "Art", "Storytelling", "Film studies", "Bike riding (Norah)", "Music", "Nature study",
+  "Cooking / baking", "Science experiment", "Building / construction play", "Drama / role play",
+  "Photography", "Gardening", "Other",
+];
+
 const WEEKS = {
   pre: [
     { week:1, sessions:{
@@ -338,6 +615,22 @@ function todayPhase() {
   return "phase3";
 }
 
+function todayWeekIdx() {
+  const d = new Date();
+  const phaseStarts = {
+    pre:    new Date("2026-05-18"),  // Programme started Monday May 18
+    phase1: new Date("2026-06-01"),
+    phase2: new Date("2026-07-01"),
+    phase3: new Date("2026-08-01"),
+  };
+  const phase = todayPhase();
+  const start = phaseStarts[phase];
+  const msPerWeek = 7 * 24 * 60 * 60 * 1000;
+  const weekNum = Math.floor((d - start) / msPerWeek);
+  const maxWeeks = { pre: 2, phase1: 4, phase2: 4, phase3: 4 };
+  return Math.max(0, Math.min(weekNum, maxWeeks[phase] - 1));
+}
+
 function todayDayName() {
   return DAYS[((new Date().getDay() + 6) % 7)];
 }
@@ -359,29 +652,28 @@ const btnStyle = (color) => ({ padding:"7px 16px", background:color, border:"non
 
 // ─── WORKOUT EDITOR COMPONENT ────────────────────────────────────────────────
 const EXERCISE_TYPES = [
-  { key:"strength", label:"Strength / Gym", fields:["sets","reps","weight"] },
-  { key:"swim",     label:"Swim / Pool",    fields:["distance","time","intervals"] },
-  { key:"cardio",   label:"Cardio",         fields:["duration","distance","avgHR"] },
-  { key:"apnea",    label:"Apnea / Static", fields:["holdTime","surfaceInterval","contractions"] },
-  { key:"breath",   label:"Breathwork",     fields:["duration","rounds"] },
-  { key:"other",    label:"Other",          fields:["duration"] },
+  { key:"swim",     label:"Swim" },
+  { key:"apnea",    label:"Apnea / UW" },
+  { key:"strength", label:"Strength" },
+  { key:"cardio",   label:"Cardio" },
+  { key:"breath",   label:"Breathwork" },
+  { key:"other",    label:"Other" },
 ];
 
-const DIFFICULTY_LABELS = ["1","2","3","4","5","6","7","8","9","10"];
+function emptySet() {
+  return { id: Date.now() + Math.random(), pulseBefore:"", pulseAfter:"", difficulty:"", notes:"" };
+}
 
-function emptyExercise() {
-  return { id: Date.now() + Math.random(), name:"", type:"strength", sets:"", reps:"", weight:"", distance:"", time:"", intervals:"", avgHR:"", holdTime:"", surfaceInterval:"", contractions:"", duration:"", rounds:"", notes:"" };
+function emptyExercise(name="", type="swim") {
+  return { id: Date.now() + Math.random(), name, type, sets:[emptySet()], detail:"" };
 }
 
 function WorkoutEditor({ dk, sessionLabel, sessionType, existingTasks, workoutData, onSave, onClose, tc, T }) {
-  const [hrBefore, setHrBefore] = useState(workoutData?.hrBefore || "");
-  const [hrAfter,  setHrAfter]  = useState(workoutData?.hrAfter  || "");
-  const [difficulty, setDifficulty] = useState(workoutData?.difficulty || "");
   const [sessionNotes, setSessionNotes] = useState(workoutData?.sessionNotes || "");
-  const [exercises, setExercises] = useState(workoutData?.exercises?.length > 0
-    ? workoutData.exercises
-    : existingTasks.map(t => ({ ...emptyExercise(), id: Date.now() + Math.random(), name: t, type: guessType(sessionType) }))
-  );
+  const [exercises, setExercises] = useState(() => {
+    if (workoutData?.exercises?.length > 0) return workoutData.exercises;
+    return existingTasks.map(t => emptyExercise(t, guessType(sessionType)));
+  });
   const [customName, setCustomName] = useState("");
 
   function guessType(st) {
@@ -393,155 +685,144 @@ function WorkoutEditor({ dk, sessionLabel, sessionType, existingTasks, workoutDa
   }
 
   function updateEx(id, field, val) {
-    setExercises(prev => prev.map(e => e.id === id ? { ...e, [field]: val } : e));
+    setExercises(prev => prev.map(e => e.id===id ? {...e,[field]:val} : e));
+  }
+
+  function updateSet(exId, setId, field, val) {
+    setExercises(prev => prev.map(e => e.id!==exId ? e : {
+      ...e, sets: e.sets.map(s => s.id!==setId ? s : {...s,[field]:val})
+    }));
+  }
+
+  function addSet(exId) {
+    setExercises(prev => prev.map(e => e.id!==exId ? e : {
+      ...e, sets: [...e.sets, emptySet()]
+    }));
+  }
+
+  function removeSet(exId, setId) {
+    setExercises(prev => prev.map(e => e.id!==exId ? e : {
+      ...e, sets: e.sets.filter(s => s.id!==setId)
+    }));
   }
 
   function addExercise() {
-    setExercises(prev => [...prev, { ...emptyExercise(), id: Date.now(), name: customName, type: guessType(sessionType) }]);
+    if (!customName) return;
+    setExercises(prev => [...prev, emptyExercise(customName, guessType(sessionType))]);
     setCustomName("");
   }
 
   function removeExercise(id) {
-    setExercises(prev => prev.filter(e => e.id !== id));
-  }
-
-  function moveEx(id, dir) {
-    setExercises(prev => {
-      const i = prev.findIndex(e => e.id === id);
-      if (i < 0) return prev;
-      const next = [...prev];
-      const swap = i + dir;
-      if (swap < 0 || swap >= next.length) return prev;
-      [next[i], next[swap]] = [next[swap], next[i]];
-      return next;
-    });
+    setExercises(prev => prev.filter(e => e.id!==id));
   }
 
   function handleSave() {
-    onSave(dk, { hrBefore, hrAfter, difficulty, sessionNotes, exercises });
+    onSave(dk, { sessionNotes, exercises });
     onClose();
   }
 
-  const iS = { background:T.input, border:`1px solid ${T.inputBorder}`, borderRadius:4, padding:"5px 8px", color:T.text, fontSize:12, fontFamily:"inherit", boxSizing:"border-box" };
+  const iS = { background:T.input, border:`1px solid ${T.inputBorder}`, borderRadius:4,
+    padding:"5px 8px", color:T.text, fontSize:12, fontFamily:"inherit", boxSizing:"border-box" };
+  const smS = { ...iS, width:64, textAlign:"center" };
 
   return (
-    <div style={{ background:T.card, border:`1px solid ${tc}55`, borderRadius:9, padding:16, marginTop:10 }}>
-      {/* Header */}
+    <div style={{ background:T.card, border:`1px solid ${tc}55`, borderRadius:9, padding:14, marginTop:10 }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
         <div>
           <span style={{ fontSize:13, color:tc }}>{sessionLabel}</span>
-          <span style={{ fontSize:11, color:T.textMid, marginLeft:8 }}>workout log</span>
+          <span style={{ fontSize:11, color:T.textMid, marginLeft:8 }}>session log</span>
         </div>
-        <button onClick={onClose} style={{ background:"none", border:"none", color:T.textFaint, cursor:"pointer", fontSize:16, fontFamily:"inherit" }}>✕</button>
+        <button onClick={onClose} style={{ background:"none", border:"none", color:T.textFaint, cursor:"pointer", fontSize:16 }}>✕</button>
       </div>
 
-      {/* Session HR + difficulty */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:14 }}>
-        <div>
-          <div style={{ fontSize:10, textTransform:"uppercase", letterSpacing:"0.1em", color:T.textMid, marginBottom:4 }}>HR Before</div>
-          <input value={hrBefore} onChange={e=>setHrBefore(e.target.value)} placeholder="bpm" style={{ ...iS, width:"100%" }} />
-        </div>
-        <div>
-          <div style={{ fontSize:10, textTransform:"uppercase", letterSpacing:"0.1em", color:T.textMid, marginBottom:4 }}>HR After</div>
-          <input value={hrAfter} onChange={e=>setHrAfter(e.target.value)} placeholder="bpm" style={{ ...iS, width:"100%" }} />
-        </div>
-        <div>
-          <div style={{ fontSize:10, textTransform:"uppercase", letterSpacing:"0.1em", color:T.textMid, marginBottom:4 }}>Difficulty 1–10</div>
-          <div style={{ display:"flex", gap:3, flexWrap:"wrap" }}>
-            {DIFFICULTY_LABELS.map(d => (
-              <button key={d} onClick={() => setDifficulty(difficulty===d?"":d)} style={{
-                width:24, height:24, borderRadius:4, border:`1px solid ${difficulty===d ? tc : T.inputBorder}`,
-                background: difficulty===d ? tc+"33" : "transparent",
-                color: difficulty===d ? tc : "#556", cursor:"pointer", fontSize:11, fontFamily:"inherit", padding:0,
-              }}>{d}</button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Exercise list */}
-      <div style={{ fontSize:10, textTransform:"uppercase", letterSpacing:"0.1em", color:T.textMid, marginBottom:8 }}>Exercises</div>
-      <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:12 }}>
-        {exercises.map((ex, idx) => {
-          const exType = EXERCISE_TYPES.find(t => t.key === ex.type) || EXERCISE_TYPES[0];
-          return (
-            <div key={ex.id} style={{ background:T.cardAlt, border:`1px solid ${T.border}`, borderRadius:7, padding:12 }}>
-              {/* Exercise name + type row */}
-              <div style={{ display:"flex", gap:8, marginBottom:8, alignItems:"center" }}>
-                <div style={{ display:"flex", gap:4 }}>
-                  <button onClick={() => moveEx(ex.id, -1)} disabled={idx===0} style={{ background:"none", border:`1px solid ${T.inputBorder}`, borderRadius:3, padding:"2px 6px", color:T.textFaint, cursor:idx===0?"default":"pointer", fontSize:10, fontFamily:"inherit" }}>↑</button>
-                  <button onClick={() => moveEx(ex.id, 1)} disabled={idx===exercises.length-1} style={{ background:"none", border:`1px solid ${T.inputBorder}`, borderRadius:3, padding:"2px 6px", color:T.textFaint, cursor:idx===exercises.length-1?"default":"pointer", fontSize:10, fontFamily:"inherit" }}>↓</button>
-                </div>
-                <input value={ex.name} onChange={e=>updateEx(ex.id,"name",e.target.value)} placeholder="Exercise name"
-                  style={{ ...iS, flex:1 }} />
-                <select value={ex.type} onChange={e=>updateEx(ex.id,"type",e.target.value)}
-                  style={{ ...iS, background:T.input }}>
-                  {EXERCISE_TYPES.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
-                </select>
-                <button onClick={() => removeExercise(ex.id)} style={{ background:"none", border:"none", color:T.textFaint, cursor:"pointer", fontSize:14, fontFamily:"inherit", padding:"0 4px" }}>✕</button>
-              </div>
-
-              {/* Dynamic fields based on type */}
-              <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
-                {ex.type === "strength" && (<>
-                  <div style={{ minWidth:60 }}><div style={{ fontSize:9, color:T.textFaint, marginBottom:2 }}>Sets</div><input value={ex.sets} onChange={e=>updateEx(ex.id,"sets",e.target.value)} placeholder="3" style={{ ...iS, width:60 }} /></div>
-                  <div style={{ minWidth:60 }}><div style={{ fontSize:9, color:T.textFaint, marginBottom:2 }}>Reps</div><input value={ex.reps} onChange={e=>updateEx(ex.id,"reps",e.target.value)} placeholder="12" style={{ ...iS, width:60 }} /></div>
-                  <div style={{ minWidth:80 }}><div style={{ fontSize:9, color:T.textFaint, marginBottom:2 }}>Weight (kg/lb)</div><input value={ex.weight} onChange={e=>updateEx(ex.id,"weight",e.target.value)} placeholder="40kg" style={{ ...iS, width:80 }} /></div>
-                </>)}
-                {ex.type === "swim" && (<>
-                  <div style={{ minWidth:80 }}><div style={{ fontSize:9, color:T.textFaint, marginBottom:2 }}>Distance</div><input value={ex.distance} onChange={e=>updateEx(ex.id,"distance",e.target.value)} placeholder="500m" style={{ ...iS, width:80 }} /></div>
-                  <div style={{ minWidth:70 }}><div style={{ fontSize:9, color:T.textFaint, marginBottom:2 }}>Time</div><input value={ex.time} onChange={e=>updateEx(ex.id,"time",e.target.value)} placeholder="9:30" style={{ ...iS, width:70 }} /></div>
-                  <div style={{ minWidth:80 }}><div style={{ fontSize:9, color:T.textFaint, marginBottom:2 }}>Intervals</div><input value={ex.intervals} onChange={e=>updateEx(ex.id,"intervals",e.target.value)} placeholder="8×50m" style={{ ...iS, width:80 }} /></div>
-                </>)}
-                {ex.type === "cardio" && (<>
-                  <div style={{ minWidth:80 }}><div style={{ fontSize:9, color:T.textFaint, marginBottom:2 }}>Duration</div><input value={ex.duration} onChange={e=>updateEx(ex.id,"duration",e.target.value)} placeholder="30 min" style={{ ...iS, width:80 }} /></div>
-                  <div style={{ minWidth:80 }}><div style={{ fontSize:9, color:T.textFaint, marginBottom:2 }}>Distance</div><input value={ex.distance} onChange={e=>updateEx(ex.id,"distance",e.target.value)} placeholder="4km" style={{ ...iS, width:80 }} /></div>
-                  <div style={{ minWidth:70 }}><div style={{ fontSize:9, color:T.textFaint, marginBottom:2 }}>Avg HR</div><input value={ex.avgHR} onChange={e=>updateEx(ex.id,"avgHR",e.target.value)} placeholder="145" style={{ ...iS, width:70 }} /></div>
-                </>)}
-                {ex.type === "apnea" && (<>
-                  <div style={{ minWidth:70 }}><div style={{ fontSize:9, color:T.textFaint, marginBottom:2 }}>Hold time</div><input value={ex.holdTime} onChange={e=>updateEx(ex.id,"holdTime",e.target.value)} placeholder="2:30" style={{ ...iS, width:70 }} /></div>
-                  <div style={{ minWidth:80 }}><div style={{ fontSize:9, color:T.textFaint, marginBottom:2 }}>Surface int.</div><input value={ex.surfaceInterval} onChange={e=>updateEx(ex.id,"surfaceInterval",e.target.value)} placeholder="3:00" style={{ ...iS, width:80 }} /></div>
-                  <div style={{ minWidth:80 }}><div style={{ fontSize:9, color:T.textFaint, marginBottom:2 }}>Contractions</div><input value={ex.contractions} onChange={e=>updateEx(ex.id,"contractions",e.target.value)} placeholder="8" style={{ ...iS, width:80 }} /></div>
-                </>)}
-                {ex.type === "breath" && (<>
-                  <div style={{ minWidth:80 }}><div style={{ fontSize:9, color:T.textFaint, marginBottom:2 }}>Duration</div><input value={ex.duration} onChange={e=>updateEx(ex.id,"duration",e.target.value)} placeholder="20 min" style={{ ...iS, width:80 }} /></div>
-                  <div style={{ minWidth:60 }}><div style={{ fontSize:9, color:T.textFaint, marginBottom:2 }}>Rounds</div><input value={ex.rounds} onChange={e=>updateEx(ex.id,"rounds",e.target.value)} placeholder="10" style={{ ...iS, width:60 }} /></div>
-                </>)}
-                {ex.type === "other" && (
-                  <div style={{ minWidth:80 }}><div style={{ fontSize:9, color:T.textFaint, marginBottom:2 }}>Duration</div><input value={ex.duration} onChange={e=>updateEx(ex.id,"duration",e.target.value)} placeholder="30 min" style={{ ...iS, width:80 }} /></div>
-                )}
-                <div style={{ flex:1, minWidth:120 }}><div style={{ fontSize:9, color:T.textFaint, marginBottom:2 }}>Notes</div><input value={ex.notes} onChange={e=>updateEx(ex.id,"notes",e.target.value)} placeholder="How it felt..." style={{ ...iS, width:"100%" }} /></div>
-              </div>
+      <div style={{ display:"flex", flexDirection:"column", gap:12, marginBottom:12 }}>
+        {exercises.map((ex) => (
+          <div key={ex.id} style={{ background:T.cardAlt, border:`1px solid ${T.border}`, borderRadius:8, overflow:"hidden" }}>
+            {/* Exercise header */}
+            <div style={{ background:tc+"22", borderBottom:`1px solid ${T.border}`, padding:"8px 12px", display:"flex", gap:8, alignItems:"center" }}>
+              <input value={ex.name} onChange={e=>updateEx(ex.id,"name",e.target.value)}
+                placeholder="Exercise / drill name"
+                style={{ ...iS, flex:1, background:"transparent", border:"none", fontWeight:600, fontSize:13, color:T.text, padding:"2px 0" }} />
+              <select value={ex.type} onChange={e=>updateEx(ex.id,"type",e.target.value)}
+                style={{ ...iS, fontSize:11, padding:"3px 6px" }}>
+                {EXERCISE_TYPES.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
+              </select>
+              <input value={ex.detail||""} onChange={e=>updateEx(ex.id,"detail",e.target.value)}
+                placeholder="e.g. 25m u/w, PT: 1:00-1:30"
+                style={{ ...iS, width:160, fontSize:11 }} />
+              <button onClick={()=>removeExercise(ex.id)} style={{ background:"none", border:"none", color:T.textFaint, cursor:"pointer", fontSize:13 }}>✕</button>
             </div>
-          );
-        })}
+
+            {/* Set rows — David Lee table format */}
+            <div style={{ padding:"8px 12px" }}>
+              <div style={{ display:"grid", gridTemplateColumns:"28px 1fr 72px 72px 72px 28px", gap:5, marginBottom:5, alignItems:"center" }}>
+                <div style={{ fontSize:9, color:T.textFaint, textAlign:"center" }}>#</div>
+                <div style={{ fontSize:9, color:T.textFaint, textTransform:"uppercase", letterSpacing:"0.08em" }}>Notes / details</div>
+                <div style={{ fontSize:9, color:T.textFaint, textAlign:"center", lineHeight:1.2 }}>Pulse<br/>Before</div>
+                <div style={{ fontSize:9, color:T.textFaint, textAlign:"center", lineHeight:1.2 }}>Pulse<br/>After</div>
+                <div style={{ fontSize:9, color:T.textFaint, textAlign:"center", lineHeight:1.2 }}>Diff<br/>1–10</div>
+                <div />
+              </div>
+
+              {ex.sets.map((s, sIdx) => (
+                <div key={s.id} style={{ display:"grid", gridTemplateColumns:"28px 1fr 72px 72px 72px 28px", gap:5, marginBottom:5, alignItems:"center" }}>
+                  <div style={{ fontSize:11, color:T.textMid, textAlign:"center" }}>{sIdx+1}</div>
+                  <input value={s.notes} onChange={e=>updateSet(ex.id,s.id,"notes",e.target.value)}
+                    placeholder="how it felt..."
+                    style={{ ...iS, width:"100%" }} />
+                  <input value={s.pulseBefore} onChange={e=>updateSet(ex.id,s.id,"pulseBefore",e.target.value)}
+                    placeholder="X"
+                    style={{ ...smS }} />
+                  <input value={s.pulseAfter} onChange={e=>updateSet(ex.id,s.id,"pulseAfter",e.target.value)}
+                    placeholder="—"
+                    style={{ ...smS }} />
+                  <input value={s.difficulty} onChange={e=>updateSet(ex.id,s.id,"difficulty",e.target.value)}
+                    placeholder="—"
+                    style={{ ...smS }} />
+                  <button onClick={()=>removeSet(ex.id,s.id)} disabled={ex.sets.length===1}
+                    style={{ background:"none", border:"none", color:ex.sets.length===1?T.textVeryDim:T.textFaint,
+                      cursor:ex.sets.length===1?"default":"pointer", fontSize:12 }}>✕</button>
+                </div>
+              ))}
+
+              <button onClick={()=>addSet(ex.id)} style={{
+                marginTop:4, padding:"3px 12px", background:"transparent",
+                border:`1px dashed ${tc}55`, borderRadius:4, color:tc+"cc", cursor:"pointer",
+                fontSize:11, fontFamily:"inherit",
+              }}>+ set / interval</button>
+            </div>
+          </div>
+        ))}
       </div>
 
-      {/* Add exercise */}
-      <div style={{ display:"flex", gap:8, marginBottom:14, alignItems:"center" }}>
+      <div style={{ display:"flex", gap:8, marginBottom:12, alignItems:"center" }}>
         <input value={customName} onChange={e=>setCustomName(e.target.value)}
-          onKeyDown={e => e.key==="Enter" && customName && addExercise()}
-          placeholder="Add exercise..."
+          onKeyDown={e => e.key==="Enter" && addExercise()}
+          placeholder="Add exercise or drill..."
           style={{ ...iS, flex:1 }} />
-        <button onClick={() => customName && addExercise()} style={{ padding:"5px 14px", background:tc+"22", border:`1px solid ${tc}55`, borderRadius:5, color:tc, cursor:"pointer", fontSize:12, fontFamily:"inherit" }}>+ Add</button>
+        <button onClick={addExercise} style={{ padding:"5px 14px", background:tc+"22",
+          border:`1px solid ${tc}55`, borderRadius:5, color:tc, cursor:"pointer",
+          fontSize:12, fontFamily:"inherit" }}>+ Add</button>
       </div>
 
-      {/* Session notes */}
       <div style={{ marginBottom:14 }}>
         <div style={{ fontSize:10, textTransform:"uppercase", letterSpacing:"0.1em", color:T.textMid, marginBottom:4 }}>Session notes</div>
         <textarea value={sessionNotes} onChange={e=>setSessionNotes(e.target.value)}
-          placeholder="Overall how it went, what to adjust next time, how you felt..."
-          style={{ ...iS, width:"100%", minHeight:60, resize:"vertical" }} />
+          placeholder="Overall how it went, what to adjust, how you felt..."
+          style={{ ...iS, width:"100%", minHeight:55, resize:"vertical" }} />
       </div>
 
-      {/* Save / Cancel */}
       <div style={{ display:"flex", gap:8 }}>
-        <button onClick={handleSave} style={{ padding:"7px 20px", background:tc, border:"none", borderRadius:5, color:T.bg, cursor:"pointer", fontSize:12, fontFamily:"inherit", fontWeight:600 }}>Save workout</button>
-        <button onClick={onClose} style={{ padding:"7px 14px", background:"transparent", border:`1px solid ${T.inputBorder}`, borderRadius:5, color:T.textDim, cursor:"pointer", fontSize:12, fontFamily:"inherit" }}>Cancel</button>
+        <button onClick={handleSave} style={{ padding:"7px 20px", background:tc, border:"none",
+          borderRadius:5, color:"#fff", cursor:"pointer", fontSize:12, fontFamily:"inherit", fontWeight:600 }}>Save session</button>
+        <button onClick={onClose} style={{ padding:"7px 14px", background:"transparent",
+          border:`1px solid ${T.border}`, borderRadius:5, color:T.textMid, cursor:"pointer",
+          fontSize:12, fontFamily:"inherit" }}>Cancel</button>
       </div>
     </div>
   );
 }
+
 
 // ─── CYCLE & MOON COMPONENT ──────────────────────────────────────────────────
 const FLOW_LEVELS = [
@@ -957,6 +1238,415 @@ function CycleAndMoon({ cyclePhase, cycleDay, updateCycle, bleedDays, toggleBlee
   );
 }
 
+// ─── CAMP VIEW COMPONENT ──────────────────────────────────────────────────────
+function CampView({ T, ac, todayStr, todayDow, campChecks, toggleCampCheck, campNotes, saveCampNote, addManualEntry }) {
+  const [tab, setTab] = useState("daily");
+  const [logFor, setLogFor] = useState(null); // { id, text }
+  const [logDraft, setLogDraft] = useState({ whatDid:"", why:"", lessons:"" });
+  const [editingNote, setEditingNote] = useState(null);
+  const [noteDraft, setNoteDraft] = useState("");
+
+  function keyFor(period, id) { return `${todayStr}_${period}_${id}`; }
+
+  function openLog(period, item) {
+    setLogFor({ key: keyFor(period, item.id), text: item.text });
+    setLogDraft({ whatDid:"", why:"", lessons:"" });
+  }
+
+  function saveLog() {
+    if (!logFor) return;
+    addManualEntry({
+      checklistItemId: logFor.key,
+      checklistItemText: logFor.text,
+      whatDid: logDraft.whatDid, why: logDraft.why, lessons: logDraft.lessons,
+    });
+    setLogFor(null);
+  }
+
+  const iS = { background:T.input, border:`1px solid ${T.inputBorder}`, borderRadius:5,
+    padding:"7px 10px", color:T.text, fontSize:12, fontFamily:"inherit", width:"100%", boxSizing:"border-box" };
+
+  function ChecklistItem({ item, period }) {
+    const key = keyFor(period, item.id);
+    const done = !!campChecks[key];
+    const note = campNotes[key] || "";
+    const isEditingNote = editingNote === key;
+    return (
+      <div style={{ marginBottom:6 }}>
+        <div style={{ display:"flex", alignItems:"flex-start", gap:9 }}>
+          <div onClick={() => toggleCampCheck(key)} style={{
+            width:16, height:16, borderRadius:4, marginTop:2, flexShrink:0, cursor:"pointer",
+            border:`1px solid ${done ? ac : (item.critical ? "#c45050" : T.border)}`,
+            background: done ? ac : "transparent",
+            display:"flex", alignItems:"center", justifyContent:"center",
+          }}>{done && <span style={{ fontSize:10, color:"#fff" }}>✓</span>}</div>
+          <div style={{ flex:1 }}>
+            <span style={{ fontSize:13, color: done ? T.textFaint : T.textSub, textDecoration: done?"line-through":"none" }}>
+              {item.text}{item.critical && <span style={{ color:"#c45050", marginLeft:5, fontSize:11 }}>⚠</span>}
+            </span>
+            <div style={{ display:"flex", gap:10, marginTop:2 }}>
+              <button onClick={() => openLog(period, item)} style={{ background:"none", border:"none", color:ac+"aa", cursor:"pointer", fontSize:10, fontFamily:"inherit", padding:0 }}>+ log for manual</button>
+              <button onClick={() => { setEditingNote(isEditingNote?null:key); setNoteDraft(note); }} style={{ background:"none", border:"none", color:T.textFaint, cursor:"pointer", fontSize:10, fontFamily:"inherit", padding:0 }}>{note?"edit note":"+ note"}</button>
+            </div>
+            {note && !isEditingNote && <div style={{ fontSize:11, color:T.textDim, fontStyle:"italic", marginTop:3 }}>{note}</div>}
+            {isEditingNote && (
+              <div style={{ display:"flex", gap:6, marginTop:4 }}>
+                <input value={noteDraft} onChange={e=>setNoteDraft(e.target.value)} style={iS} placeholder="Quick note..." />
+                <button onClick={() => { saveCampNote(key, noteDraft); setEditingNote(null); }} style={{ background:ac, border:"none", borderRadius:4, color:"#fff", padding:"0 12px", cursor:"pointer", fontSize:11 }}>Save</button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div style={{ marginBottom:16 }}>
+        <h2 style={{ fontSize:17, fontWeight:400, margin:"0 0 4px", color:ac }}>Camp Management</h2>
+        <p style={{ margin:0, fontSize:12, color:T.textMid, fontStyle:"italic" }}>Moorlands Acting Manager · {todayDow}, {new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long"})}</p>
+      </div>
+
+      <div style={{ display:"flex", gap:0, borderBottom:`1px solid ${T.border}`, marginBottom:16, flexWrap:"wrap" }}>
+        {[["daily","Daily"],["weekly","Weekly"],["saturday","Saturday"],["standing","Standing"],["contacts","Contacts"]].map(([v,l]) => (
+          <button key={v} onClick={() => setTab(v)} style={{
+            padding:"6px 12px", background:"none", border:"none",
+            borderBottom: tab===v ? `2px solid ${ac}` : "2px solid transparent",
+            color: tab===v ? ac : T.textFaint, cursor:"pointer", fontSize:12, fontFamily:"inherit", marginBottom:-1,
+          }}>{l}</button>
+        ))}
+      </div>
+
+      {/* DAILY */}
+      {tab === "daily" && (
+        <div>
+          {Object.entries(CAMP_DAILY).map(([period, data]) => (
+            <div key={period} style={{ marginBottom:16, background:T.surface, border:`1px solid ${T.border}`, borderRadius:9, padding:14 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:10 }}>
+                <span style={{ fontSize:13, color:T.text, fontWeight:600 }}>{data.label}</span>
+                <span style={{ fontSize:11, color:T.textFaint }}>{data.time}</span>
+              </div>
+              {data.groups.map(g => (
+                <div key={g.group} style={{ marginBottom:12 }}>
+                  <div style={{ fontSize:10, textTransform:"uppercase", letterSpacing:"0.1em", color:T.textDim, marginBottom:6 }}>{g.group}</div>
+                  {g.items.map(item => <ChecklistItem key={item.id} item={item} period={period} />)}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* WEEKLY */}
+      {tab === "weekly" && (
+        <div>
+          {DAYS.map(d => {
+            const data = CAMP_WEEKLY[d];
+            if (!data) return null;
+            const isToday = d === todayDow;
+            return (
+              <div key={d} style={{ marginBottom:14, background:T.surface, border:`1px solid ${isToday?ac+"66":T.border}`, borderRadius:9, padding:14 }}>
+                <div style={{ marginBottom:8 }}>
+                  <span style={{ fontSize:13, color: isToday?ac:T.text, fontWeight:600 }}>{data.label}</span>
+                  {isToday && <span style={{ fontSize:9, background:ac+"33", color:ac, padding:"1px 7px", borderRadius:10, marginLeft:8 }}>TODAY</span>}
+                </div>
+                <div style={{ fontSize:11, color:T.textDim, fontStyle:"italic", marginBottom:8 }}>{data.note}</div>
+                {data.items.length === 0 ? (
+                  <div style={{ fontSize:12, color:T.textFaint }}>See Saturday Turnaround tab for full protocol.</div>
+                ) : data.items.map(item => <ChecklistItem key={item.id} item={item} period={`weekly_${d}`} />)}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* SATURDAY */}
+      {tab === "saturday" && (
+        <div>
+          <div style={{ background:ac+"15", border:`1px solid ${ac}44`, borderRadius:8, padding:"10px 14px", marginBottom:14, fontSize:12, color:T.textSub, fontStyle:"italic" }}>
+            Think of this like a relay race — the baton (the camp) must be fully handed off before the next runner (incoming group) can begin.
+          </div>
+          {CAMP_SATURDAY.map(phase => (
+            <div key={phase.phase} style={{ marginBottom:16, background:T.surface, border:`1px solid ${T.border}`, borderRadius:9, padding:14 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+                <span style={{ fontSize:13, color:ac, fontWeight:600 }}>{phase.phase}</span>
+                {phase.time && <span style={{ fontSize:11, color:T.textFaint }}>{phase.time}</span>}
+              </div>
+              {phase.target && <div style={{ fontSize:11, color:T.textDim, fontStyle:"italic", marginBottom:10 }}>⚠ Target: {phase.target}</div>}
+              {phase.items.map(item => <ChecklistItem key={item.id} item={item} period={`sat_${phase.phase}`} />)}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* STANDING */}
+      {tab === "standing" && (
+        <div>
+          {CAMP_STANDING.map(s => (
+            <div key={s.group} style={{ marginBottom:14, background:T.surface, border:`1px solid ${T.border}`, borderRadius:9, padding:14 }}>
+              <div style={{ fontSize:12, color:T.text, fontWeight:600, marginBottom:8 }}>{s.group}</div>
+              {s.items.map((it,i) => <div key={i} style={{ fontSize:12, color:T.textSub, marginBottom:6, paddingLeft:10, borderLeft:`2px solid ${ac}44` }}>{it}</div>)}
+            </div>
+          ))}
+          <div style={{ background:"#c4505015", border:"1px solid #c4505044", borderRadius:9, padding:14 }}>
+            <div style={{ fontSize:12, color:"#c45050", fontWeight:600, marginBottom:8 }}>Five Rules You Cannot Break</div>
+            {CAMP_FIVE_RULES.map((r,i) => <div key={i} style={{ fontSize:12, color:T.textSub, marginBottom:6, paddingLeft:10, borderLeft:"2px solid #c4505066" }}>{r}</div>)}
+          </div>
+        </div>
+      )}
+
+      {/* CONTACTS */}
+      {tab === "contacts" && (
+        <div style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:9, padding:14 }}>
+          {CAMP_CONTACTS.map(c => (
+            <div key={c.name} style={{ padding:"8px 0", borderBottom:`1px solid ${T.border}` }}>
+              <div style={{ fontSize:13, color:T.text }}>{c.name}</div>
+              <div style={{ fontSize:11, color:ac }}>{c.role}</div>
+              <div style={{ fontSize:11, color:T.textDim, marginTop:2 }}>{c.when}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Log modal */}
+      {logFor && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.6)", display:"flex", alignItems:"center", justifyContent:"center", padding:20, zIndex:100 }}
+          onClick={() => setLogFor(null)}>
+          <div onClick={e=>e.stopPropagation()} style={{ background:T.card, border:`1px solid ${ac}55`, borderRadius:10, padding:18, maxWidth:420, width:"100%" }}>
+            <div style={{ fontSize:13, color:ac, marginBottom:4 }}>Log for Manual</div>
+            <div style={{ fontSize:11, color:T.textFaint, marginBottom:12 }}>{logFor.text}</div>
+            <div style={{ marginBottom:8 }}>
+              <label style={{ fontSize:10, color:T.textMid, display:"block", marginBottom:3 }}>What did you do?</label>
+              <textarea value={logDraft.whatDid} onChange={e=>setLogDraft(p=>({...p,whatDid:e.target.value}))} style={{...iS, minHeight:50, resize:"vertical"}} />
+            </div>
+            <div style={{ marginBottom:8 }}>
+              <label style={{ fontSize:10, color:T.textMid, display:"block", marginBottom:3 }}>Why? (reasoning, context)</label>
+              <textarea value={logDraft.why} onChange={e=>setLogDraft(p=>({...p,why:e.target.value}))} style={{...iS, minHeight:50, resize:"vertical"}} />
+            </div>
+            <div style={{ marginBottom:14 }}>
+              <label style={{ fontSize:10, color:T.textMid, display:"block", marginBottom:3 }}>Lessons / notes for next time</label>
+              <textarea value={logDraft.lessons} onChange={e=>setLogDraft(p=>({...p,lessons:e.target.value}))} style={{...iS, minHeight:50, resize:"vertical"}} />
+            </div>
+            <div style={{ display:"flex", gap:8 }}>
+              <button onClick={saveLog} style={{ padding:"7px 18px", background:ac, border:"none", borderRadius:5, color:"#fff", cursor:"pointer", fontSize:12, fontWeight:600 }}>Save to Manual</button>
+              <button onClick={() => setLogFor(null)} style={{ padding:"7px 14px", background:"transparent", border:`1px solid ${T.border}`, borderRadius:5, color:T.textMid, cursor:"pointer", fontSize:12 }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── MOCHA VIEW COMPONENT ─────────────────────────────────────────────────────
+function MochaView({ T, todayStr, phase, mochaSessionLog, toggleMochaSession,
+  mochaCommandScores, setMochaCommandScore, mochaBitingLog, addMochaBitingEntry, removeMochaBitingEntry,
+  mochaPottyLog, saveMochaPotty, mochaWeeklyNotes, saveMochaWeeklyNote }) {
+  const [tab, setTab] = useState("today");
+  const [bitingDraft, setBitingDraft] = useState({ time:"", trigger:"", energyBurn:"", response:"", notes:"" });
+  const phaseInfo = MOCHA_PHASES.find(p => p.key === phase);
+  const todaySessions = mochaSessionLog[todayStr] || {};
+
+  const iS = { background:T.input, border:`1px solid ${T.inputBorder}`, borderRadius:5,
+    padding:"6px 9px", color:T.text, fontSize:12, fontFamily:"inherit", boxSizing:"border-box" };
+
+  // Compute approximate week number from June 17 start
+  function weekKeyForToday() {
+    const start = new Date("2026-06-17");
+    const today = new Date();
+    const wk = Math.floor((today - start) / (7*24*60*60*1000)) + 1;
+    return `wk${Math.max(1, wk)}`;
+  }
+  const currentWeekKey = weekKeyForToday();
+
+  return (
+    <div>
+      <div style={{ marginBottom:16 }}>
+        <h2 style={{ fontSize:17, fontWeight:400, margin:"0 0 4px", color:phaseInfo.color }}>Mocha — Training</h2>
+        <p style={{ margin:0, fontSize:12, color:T.textMid, fontStyle:"italic" }}>Stonnie Dennis Method · {phaseInfo.label} · {phaseInfo.dates}</p>
+      </div>
+
+      <div style={{ display:"flex", gap:6, marginBottom:16, flexWrap:"wrap" }}>
+        {MOCHA_PHASES.map(p => (
+          <div key={p.key} style={{
+            padding:"4px 11px", borderRadius:14, fontSize:11,
+            border:`1px solid ${phase===p.key ? p.color : T.border}`,
+            background: phase===p.key ? p.color+"22" : "transparent",
+            color: phase===p.key ? p.color : T.textFaint,
+          }}>{p.label}</div>
+        ))}
+      </div>
+
+      <div style={{ display:"flex", gap:0, borderBottom:`1px solid ${T.border}`, marginBottom:16, flexWrap:"wrap" }}>
+        {[["today","Today"],["commands","Commands"],["biting","Biting Log"],["potty","Potty"],["weekly","Weekly Review"],["reference","Quick Reference"]].map(([v,l]) => (
+          <button key={v} onClick={() => setTab(v)} style={{
+            padding:"6px 12px", background:"none", border:"none",
+            borderBottom: tab===v ? `2px solid ${phaseInfo.color}` : "2px solid transparent",
+            color: tab===v ? phaseInfo.color : T.textFaint, cursor:"pointer", fontSize:12, fontFamily:"inherit", marginBottom:-1,
+          }}>{l}</button>
+        ))}
+      </div>
+
+      {/* TODAY */}
+      {tab === "today" && (
+        <div>
+          <div style={{ background:phaseInfo.color+"15", border:`1px solid ${phaseInfo.color}33`, borderRadius:8, padding:"10px 14px", marginBottom:14, fontSize:12, color:T.textSub, fontStyle:"italic" }}>
+            {phaseInfo.goal}
+          </div>
+          {MOCHA_SESSION_TEMPLATE.map(s => {
+            const done = !!todaySessions[s.id];
+            return (
+              <div key={s.id} onClick={() => toggleMochaSession(todayStr, s.id)} style={{
+                display:"flex", alignItems:"flex-start", gap:10, cursor:"pointer",
+                background: done ? phaseInfo.color+"10" : T.surface,
+                border:`1px solid ${done?phaseInfo.color+"44":T.border}`, borderRadius:8, padding:"10px 12px", marginBottom:8,
+              }}>
+                <span style={{ fontSize:18 }}>{s.icon}</span>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontSize:13, color: done?phaseInfo.color:T.text, textDecoration:done?"line-through":"none" }}>{s.label}</div>
+                  <div style={{ fontSize:11, color:T.textDim, marginTop:2 }}>{s.note}</div>
+                </div>
+                <div style={{ width:16, height:16, borderRadius:4, marginTop:2, flexShrink:0,
+                  border:`1px solid ${done?phaseInfo.color:T.border}`, background:done?phaseInfo.color:"transparent",
+                  display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  {done && <span style={{ fontSize:10, color:"#fff" }}>✓</span>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* COMMANDS */}
+      {tab === "commands" && (
+        <div>
+          <div style={{ fontSize:11, color:T.textDim, marginBottom:12, fontStyle:"italic" }}>Rating: 1=Not started · 2=Introduced · 3=Learning · 4=Solid at home · 5=Solid in 3 environments. Update every Friday.</div>
+          {MOCHA_COMMANDS.map(cmd => (
+            <div key={cmd} style={{ marginBottom:10, background:T.surface, border:`1px solid ${T.border}`, borderRadius:7, padding:"10px 12px" }}>
+              <div style={{ fontSize:13, color:T.text, marginBottom:6 }}>{cmd}</div>
+              <div style={{ display:"flex", gap:6 }}>
+                {[1,2,3,4,5].map(score => {
+                  const current = mochaCommandScores[cmd]?.[currentWeekKey];
+                  return (
+                    <button key={score} onClick={() => setMochaCommandScore(cmd, currentWeekKey, score)} style={{
+                      width:30, height:30, borderRadius:6, fontSize:12, cursor:"pointer",
+                      border:`1px solid ${current===score ? phaseInfo.color : T.border}`,
+                      background: current===score ? phaseInfo.color+"33" : "transparent",
+                      color: current===score ? phaseInfo.color : T.textFaint,
+                    }}>{score}</button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* BITING LOG */}
+      {tab === "biting" && (
+        <div>
+          <div style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:9, padding:14, marginBottom:16 }}>
+            <div style={{ fontSize:11, textTransform:"uppercase", letterSpacing:"0.1em", color:T.textMid, marginBottom:10 }}>Log an incident</div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:8 }}>
+              <input value={bitingDraft.time} onChange={e=>setBitingDraft(p=>({...p,time:e.target.value}))} placeholder="Time" style={iS} />
+              <input value={bitingDraft.energyBurn} onChange={e=>setBitingDraft(p=>({...p,energyBurn:e.target.value}))} placeholder="Energy burn before? Y/N" style={iS} />
+            </div>
+            <input value={bitingDraft.trigger} onChange={e=>setBitingDraft(p=>({...p,trigger:e.target.value}))} placeholder="Trigger / context" style={{...iS, width:"100%", marginBottom:8}} />
+            <input value={bitingDraft.response} onChange={e=>setBitingDraft(p=>({...p,response:e.target.value}))} placeholder="Response used" style={{...iS, width:"100%", marginBottom:8}} />
+            <input value={bitingDraft.notes} onChange={e=>setBitingDraft(p=>({...p,notes:e.target.value}))} placeholder="Notes" style={{...iS, width:"100%", marginBottom:10}} />
+            <button onClick={() => { addMochaBitingEntry({...bitingDraft, date: todayStr}); setBitingDraft({time:"",trigger:"",energyBurn:"",response:"",notes:""}); }}
+              style={{ padding:"6px 16px", background:phaseInfo.color, border:"none", borderRadius:5, color:"#fff", cursor:"pointer", fontSize:12, fontWeight:600 }}>Log incident</button>
+          </div>
+          {mochaBitingLog.map(e => (
+            <div key={e.id} style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:7, padding:"10px 12px", marginBottom:8 }}>
+              <div style={{ display:"flex", justifyContent:"space-between" }}>
+                <span style={{ fontSize:12, color:T.text }}>{e.date} {e.time && `· ${e.time}`}</span>
+                <button onClick={() => removeMochaBitingEntry(e.id)} style={{ background:"none", border:"none", color:T.textFaint, cursor:"pointer" }}>✕</button>
+              </div>
+              {e.trigger && <div style={{ fontSize:11, color:T.textSub, marginTop:3 }}>Trigger: {e.trigger}</div>}
+              {e.response && <div style={{ fontSize:11, color:T.textDim }}>Response: {e.response}</div>}
+              {e.notes && <div style={{ fontSize:11, color:T.textFaint, fontStyle:"italic" }}>{e.notes}</div>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* POTTY */}
+      {tab === "potty" && (
+        <div>
+          {(() => {
+            const data = mochaPottyLog[currentWeekKey] || {};
+            return (
+              <div style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:9, padding:14 }}>
+                <div style={{ fontSize:12, color:T.text, marginBottom:10 }}>This week ({currentWeekKey})</div>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:8 }}>
+                  <div>
+                    <label style={{ fontSize:10, color:T.textMid, display:"block", marginBottom:3 }}>Accidents indoors</label>
+                    <input value={data.accidents||""} onChange={e=>saveMochaPotty(currentWeekKey,{accidents:e.target.value})} style={{...iS,width:"100%"}} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize:10, color:T.textMid, display:"block", marginBottom:3 }}>Successes at spot</label>
+                    <input value={data.successes||""} onChange={e=>saveMochaPotty(currentWeekKey,{successes:e.target.value})} style={{...iS,width:"100%"}} />
+                  </div>
+                </div>
+                <label style={{ fontSize:10, color:T.textMid, display:"block", marginBottom:3 }}>Pattern (what time?)</label>
+                <input value={data.pattern||""} onChange={e=>saveMochaPotty(currentWeekKey,{pattern:e.target.value})} style={{...iS,width:"100%",marginBottom:8}} />
+                <label style={{ fontSize:10, color:T.textMid, display:"block", marginBottom:3 }}>Adjustment made</label>
+                <input value={data.adjustment||""} onChange={e=>saveMochaPotty(currentWeekKey,{adjustment:e.target.value})} style={{...iS,width:"100%"}} />
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
+      {/* WEEKLY REVIEW */}
+      {tab === "weekly" && (
+        <div>
+          {(() => {
+            const data = mochaWeeklyNotes[currentWeekKey] || {};
+            return (
+              <div style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:9, padding:14 }}>
+                <div style={{ fontSize:12, color:T.text, marginBottom:10 }}>Sunday evening review ({currentWeekKey})</div>
+                {[["strongest","Strongest skill"],["weakest","Weakest skill"],["bitingPeak","Biting peak time"],["nextPriority","Next week priority"]].map(([k,l]) => (
+                  <div key={k} style={{ marginBottom:8 }}>
+                    <label style={{ fontSize:10, color:T.textMid, display:"block", marginBottom:3 }}>{l}</label>
+                    <input value={data[k]||""} onChange={e=>saveMochaWeeklyNote(currentWeekKey,{[k]:e.target.value})} style={{...iS,width:"100%"}} />
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
+      {/* QUICK REFERENCE */}
+      {tab === "reference" && (
+        <div>
+          <div style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:9, padding:14, marginBottom:14 }}>
+            <div style={{ fontSize:12, color:phaseInfo.color, marginBottom:8 }}>Food Protocol — Every meal, every time, forever</div>
+            {MOCHA_FOOD_PROTOCOL.map((s,i) => <div key={i} style={{ fontSize:12, color:T.textSub, marginBottom:5 }}>{i+1}. {s}</div>)}
+          </div>
+          <div style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:9, padding:14, marginBottom:14 }}>
+            <div style={{ fontSize:12, color:phaseInfo.color, marginBottom:8 }}>Biting Response — same for every person</div>
+            {MOCHA_BITING_PROTOCOL.map((b,i) => (
+              <div key={i} style={{ display:"flex", justifyContent:"space-between", marginBottom:5 }}>
+                <span style={{ fontSize:12, color:T.textSub }}>{b.situation}</span>
+                <span style={{ fontSize:12, color:T.textDim }}>{b.response}</span>
+              </div>
+            ))}
+            <div style={{ fontSize:11, color:"#c45050", marginTop:8 }}>NEVER laugh · push · yell · spray · tap nose</div>
+          </div>
+          <div style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:9, padding:14 }}>
+            <div style={{ fontSize:12, color:phaseInfo.color, marginBottom:8 }}>Crate Law</div>
+            {MOCHA_CRATE_LAW.map((c,i) => <div key={i} style={{ fontSize:12, color:T.textSub, marginBottom:5 }}>· {c}</div>)}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── APP ─────────────────────────────────────────────────────────────────────
 function App() {
   const [darkMode, setDarkMode] = useState(true);
@@ -964,8 +1654,9 @@ function App() {
   const T = makeTheme(darkMode);
   const CYCLE_PHASES = makeCyclePhases(T);
 
-  const [trainingPhase, setTrainingPhase] = useState(todayPhase());
-  const [weekIdx, setWeekIdx] = useState(0);
+  // Phase and week computed from today's date every render — never stored, never stale
+  const trainingPhase = todayPhase();
+  const weekIdx = todayWeekIdx();
   const [view, setView] = useState("home");
   const [checked, setChecked] = useState({});
   const [dayNotes, setDayNotes] = useState({});
@@ -980,6 +1671,23 @@ function App() {
   const [feelingsLog, setFeelingsLog] = useState({});
   const [workoutLog, setWorkoutLog] = useState({}); // { "phase1_w0_Tue": { hrBefore, hrAfter, difficulty, exercises:[{name,sets,reps,weight,distance,time,notes}], sessionNotes } }
   const [editWorkout, setEditWorkout] = useState(null); // dk string
+
+  // Camp management
+  const [campChecks, setCampChecks] = useState({}); // { "2026-07-05_morning_water_am": true }
+  const [campNotes, setCampNotes] = useState({}); // { "2026-07-05_morning_water_am": "note text" }
+
+  // Mocha training
+  const [mochaSessionLog, setMochaSessionLog] = useState({}); // { "2026-06-17": { energy_burn: true, training: true, ... } }
+  const [mochaCommandScores, setMochaCommandScores] = useState({}); // { "Sit": { wk1: 3, wk3: 4, ... } }
+  const [mochaBitingLog, setMochaBitingLog] = useState([]);
+  const [mochaPottyLog, setMochaPottyLog] = useState({}); // { weekKey: { accidents, successes, pattern, adjustment } }
+  const [mochaWeeklyNotes, setMochaWeeklyNotes] = useState({}); // { weekKey: { strongest, weakest, bitingPeak, nextPriority } }
+
+  // SOP Manual
+  const [manualEntries, setManualEntries] = useState([]); // [{ id, date, checklistItemId, checklistItemText, whatDid, why, lessons }]
+
+  // Homeschool
+  const [homeschoolLog, setHomeschoolLog] = useState({}); // { "2026-07-05": { handwriting: true, skill: "Art", skillNotes: "..." } }
 
   // Training log
   const [staticLog, setStaticLog] = useState([]);
@@ -1009,6 +1717,7 @@ function App() {
       const raw = localStorage.getItem("rhythm_v3");
       if (raw) {
         const d = JSON.parse(raw);
+        // Version check — if data is from old version, preserve user data but ignore stale UI state
         setChecked(d.checked || {});
         setDayNotes(d.dayNotes || {});
         setStaticLog(d.staticLog || []);
@@ -1018,18 +1727,46 @@ function App() {
         setBleedDays(d.bleedDays || {});
         setFeelingsLog(d.feelingsLog || {});
         setWorkoutLog(d.workoutLog || {});
+        setCampChecks(d.campChecks || {});
+        setCampNotes(d.campNotes || {});
+        setMochaSessionLog(d.mochaSessionLog || {});
+        setMochaCommandScores(d.mochaCommandScores || {});
+        setMochaBitingLog(d.mochaBitingLog || []);
+        setMochaPottyLog(d.mochaPottyLog || {});
+        setMochaWeeklyNotes(d.mochaWeeklyNotes || {});
+        setManualEntries(d.manualEntries || []);
+        setHomeschoolLog(d.homeschoolLog || {});
         if (d.cyclePhase) setCyclePhase(d.cyclePhase);
-        if (d.cycleDay) setCycleDay(d.cycleDay);
-        if (d.cycleStartDate) setCycleStartDate(d.cycleStartDate);
+        if (d.cycleStartDate) {
+          setCycleStartDate(d.cycleStartDate);
+          // Auto-calculate cycle day from start date
+          const startDate = new Date(d.cycleStartDate);
+          const today = new Date();
+          const daysSinceStart = Math.floor((today - startDate) / (1000*60*60*24));
+          const cycleLength = 28;
+          const currentDay = (daysSinceStart % cycleLength) + 1;
+          if (currentDay >= 1 && currentDay <= 35) setCycleDay(currentDay);
+          // Auto-set phase based on day
+          if (currentDay <= 7) setCyclePhase("menstrual");
+          else if (currentDay <= 13) setCyclePhase("follicular");
+          else if (currentDay <= 16) setCyclePhase("ovulatory");
+          else setCyclePhase("luteal");
+        } else if (d.cyclePhase) {
+          setCyclePhase(d.cyclePhase);
+          if (d.cycleDay) setCycleDay(d.cycleDay);
+        }
         if (d.darkMode !== undefined) setDarkMode(d.darkMode);
       }
     } catch {}
+    // Phase and week are computed from date — nothing to set here
   }, []);
 
   function persist(updates) {
     try {
       const data = { checked, dayNotes, staticLog, bills, weeklyReflection, mealPlan,
-        cyclePhase, cycleDay, cycleStartDate, bleedDays, feelingsLog, workoutLog, darkMode, ...updates };
+        cyclePhase, cycleDay, cycleStartDate, bleedDays, feelingsLog, workoutLog, darkMode,
+        campChecks, campNotes, mochaSessionLog, mochaCommandScores, mochaBitingLog,
+        mochaPottyLog, mochaWeeklyNotes, manualEntries, homeschoolLog, ...updates };
       localStorage.setItem("rhythm_v3", JSON.stringify(data));
     } catch {}
   }
@@ -1058,6 +1795,107 @@ function App() {
     const next = { ...workoutLog, [dk]: data };
     setWorkoutLog(next);
     persist({ workoutLog: next });
+  }
+
+  // ── Camp helpers ──
+  function toggleCampCheck(key) {
+    const next = { ...campChecks, [key]: !campChecks[key] };
+    setCampChecks(next);
+    persist({ campChecks: next });
+  }
+
+  function saveCampNote(key, text) {
+    const next = { ...campNotes, [key]: text };
+    setCampNotes(next);
+    persist({ campNotes: next });
+  }
+
+  // ── Mocha helpers ──
+  function toggleMochaSession(dateStr, sessionId) {
+    const day = mochaSessionLog[dateStr] || {};
+    const next = { ...mochaSessionLog, [dateStr]: { ...day, [sessionId]: !day[sessionId] } };
+    setMochaSessionLog(next);
+    persist({ mochaSessionLog: next });
+  }
+
+  function setMochaCommandScore(command, weekKey, score) {
+    const cmd = mochaCommandScores[command] || {};
+    const next = { ...mochaCommandScores, [command]: { ...cmd, [weekKey]: score } };
+    setMochaCommandScores(next);
+    persist({ mochaCommandScores: next });
+  }
+
+  function addMochaBitingEntry(entry) {
+    const next = [{ ...entry, id: Date.now() }, ...mochaBitingLog].slice(0, 100);
+    setMochaBitingLog(next);
+    persist({ mochaBitingLog: next });
+  }
+
+  function removeMochaBitingEntry(id) {
+    const next = mochaBitingLog.filter(e => e.id !== id);
+    setMochaBitingLog(next);
+    persist({ mochaBitingLog: next });
+  }
+
+  function saveMochaPotty(weekKey, data) {
+    const next = { ...mochaPottyLog, [weekKey]: { ...(mochaPottyLog[weekKey]||{}), ...data } };
+    setMochaPottyLog(next);
+    persist({ mochaPottyLog: next });
+  }
+
+  function saveMochaWeeklyNote(weekKey, data) {
+    const next = { ...mochaWeeklyNotes, [weekKey]: { ...(mochaWeeklyNotes[weekKey]||{}), ...data } };
+    setMochaWeeklyNotes(next);
+    persist({ mochaWeeklyNotes: next });
+  }
+
+  // ── Manual helpers ──
+  function addManualEntry(entry) {
+    const next = [{ ...entry, id: Date.now(), date: new Date().toISOString().slice(0,10) }, ...manualEntries];
+    setManualEntries(next);
+    persist({ manualEntries: next });
+  }
+
+  function removeManualEntry(id) {
+    const next = manualEntries.filter(e => e.id !== id);
+    setManualEntries(next);
+    persist({ manualEntries: next });
+  }
+
+  function exportManual() {
+    const grouped = {};
+    manualEntries.forEach(e => {
+      const key = e.checklistItemText || "General";
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(e);
+    });
+    let md = `# Moorlands Camps — Acting Manager SOP Manual\n\n*Built in real time, Summer 2026*\n\n`;
+    Object.entries(grouped).forEach(([item, entries]) => {
+      md += `## ${item}\n\n`;
+      entries.sort((a,b) => a.date.localeCompare(b.date)).forEach(e => {
+        md += `**${e.date}**\n\n`;
+        if (e.whatDid) md += `*What I did:* ${e.whatDid}\n\n`;
+        if (e.why) md += `*Why:* ${e.why}\n\n`;
+        if (e.lessons) md += `*Lessons / notes for next time:* ${e.lessons}\n\n`;
+        md += `---\n\n`;
+      });
+    });
+    const blob = new Blob([md], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Moorlands_SOP_Manual_${new Date().toISOString().slice(0,10)}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  // ── Homeschool helpers ──
+  function saveHomeschool(dateStr, data) {
+    const next = { ...homeschoolLog, [dateStr]: { ...(homeschoolLog[dateStr]||{}), ...data } };
+    setHomeschoolLog(next);
+    persist({ homeschoolLog: next });
   }
 
   function toggleTask(key) {
@@ -1120,7 +1958,7 @@ function App() {
   const upcomingMoons = getUpcomingMoons(3);
   const mealDays = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 
-  const NAV = [["home","Home"],["week","Week"],["cycle","Cycle & Moon"],["life","Life Admin"],["log","Training Log"]];
+  const NAV = [["home","Home"],["week","Week"],["camp","Camp"],["mocha","Mocha"],["cycle","Cycle & Moon"],["life","Life Admin"],["manual","Manual"],["log","Training Log"]];
 
   return (
     <div style={{ minHeight:"100vh", background:T.bg, color:T.text, fontFamily:"'Georgia', serif", fontSize:14, transition:"background 0.2s, color 0.2s" }}>
@@ -1143,13 +1981,15 @@ function App() {
             }}>
               {darkMode ? "☀️" : "🌙"}
             </button>
-            {/* Training phase selector */}
+            {/* Training phase display — auto-calculated from date */}
             {Object.entries(PHASE_META).map(([k,v]) => (
-              <button key={k} onClick={() => { setTrainingPhase(k); setWeekIdx(0); }} style={{
-                padding:"4px 11px", borderRadius:14, border:`1px solid ${trainingPhase===k ? v.color : T.border}`,
+              <div key={k} style={{
+                padding:"4px 11px", borderRadius:14,
+                border:`1px solid ${trainingPhase===k ? v.color : T.border}`,
                 background: trainingPhase===k ? v.color+"22" : "transparent",
-                color: trainingPhase===k ? v.color : T.textFaint, cursor:"pointer", fontSize:11, fontFamily:"inherit",
-              }}>{v.label}</button>
+                color: trainingPhase===k ? v.color : T.textFaint,
+                fontSize:11,
+              }}>{v.label}</div>
             ))}
           </div>
         </div>
@@ -1325,20 +2165,18 @@ function App() {
                     {/* Workout summary if logged */}
                     {todayWod && (
                       <div style={{ marginTop:10, background:tc+"0a", borderRadius:6, padding:"8px 10px", borderTop:`1px solid ${tc}22` }}>
-                        <div style={{ fontSize:10, textTransform:"uppercase", letterSpacing:"0.1em", color:tc, marginBottom:5 }}>Workout logged</div>
-                        <div style={{ display:"flex", gap:12, flexWrap:"wrap", marginBottom:4 }}>
-                          {todayWod.hrBefore && <span style={{ fontSize:12, color:T.textMid }}>HR before <span style={{ color:tc }}>{todayWod.hrBefore}</span></span>}
-                          {todayWod.hrAfter  && <span style={{ fontSize:12, color:T.textMid }}>after <span style={{ color:tc }}>{todayWod.hrAfter}</span></span>}
-                          {todayWod.difficulty && <span style={{ fontSize:12, color:T.textMid }}>difficulty <span style={{ color:tc }}>{todayWod.difficulty}/10</span></span>}
-                        </div>
-                        {todayWod.exercises?.filter(e=>e.name).slice(0,3).map((ex,i) => (
-                          <div key={i} style={{ fontSize:11, color:T.textDim }}>
-                            <span style={{ color:T.textSub }}>{ex.name}</span>
-                            {ex.sets && <span> · {ex.sets}×{ex.reps}{ex.weight?` @ ${ex.weight}`:""}</span>}
-                            {ex.holdTime && <span> · {ex.holdTime}{ex.contractions?` · ${ex.contractions} contractions`:""}</span>}
-                            {ex.distance && <span> · {ex.distance}{ex.time?` in ${ex.time}`:""}</span>}
-                          </div>
-                        ))}
+                        <div style={{ fontSize:10, textTransform:"uppercase", letterSpacing:"0.1em", color:tc, marginBottom:5 }}>Session logged ✓</div>
+                        {todayWod.exercises?.filter(e=>e.name).slice(0,3).map((ex,i) => {
+                          const lastSet = ex.sets?.[ex.sets.length-1];
+                          return (
+                            <div key={i} style={{ fontSize:11, color:T.textDim, marginBottom:2 }}>
+                              <span style={{ color:T.textSub }}>{ex.name}</span>
+                              {ex.detail && <span style={{ color:T.textFaint }}> — {ex.detail}</span>}
+                              {lastSet?.pulseAfter && <span style={{ color:tc }}> · HR after: {lastSet.pulseAfter}</span>}
+                              {lastSet?.difficulty && <span style={{ color:T.textMid }}> · diff: {lastSet.difficulty}</span>}
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
 
@@ -1472,8 +2310,11 @@ function App() {
               <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:10 }}>
                 {[
                   { label:"Full Week", sub:"All 7 days", view:"week",  color:ac },
+                  { label:"Camp", sub:"Moorlands checklist", view:"camp", color:ACCENT.amber },
+                  { label:"Mocha", sub:`${MOCHA_PHASES.find(p=>p.key===mochaPhaseForDate(new Date()))?.label.split(":")[0]}`, view:"mocha", color:"#5bb8a0" },
                   { label:"Cycle & Moon", sub:`${cp.label} · Day ${cycleDay}`, view:"cycle", color:cp.color },
-                  { label:"Life Admin", sub:"Meals · Bills · Reflect", view:"life",  color:TRAINING_C.grocery },
+                  { label:"Life Admin", sub:"Meals · Bills · Homeschool", view:"life",  color:TRAINING_C.grocery },
+                  { label:"Manual", sub:`${manualEntries.length} entries`, view:"manual", color:ACCENT.amber },
                   { label:"Training Log", sub:`${staticLog.length} entries`, view:"log", color:TRAINING_C.dry },
                 ].map(t => (
                   <button key={t.view} onClick={() => setView(t.view)} style={{
@@ -1491,18 +2332,48 @@ function App() {
           );
         })()}
 
+        {/* ── CAMP VIEW ── */}
+        {view === "camp" && (() => {
+          const todayStr = new Date().toISOString().slice(0,10);
+          const todayDow = todayDayName();
+          return (
+            <CampView
+              T={T} ac={ACCENT.amber}
+              todayStr={todayStr} todayDow={todayDow}
+              campChecks={campChecks} toggleCampCheck={toggleCampCheck}
+              campNotes={campNotes} saveCampNote={saveCampNote}
+              addManualEntry={addManualEntry}
+            />
+          );
+        })()}
+
+        {/* ── MOCHA VIEW ── */}
+        {view === "mocha" && (() => {
+          const todayStr = new Date().toISOString().slice(0,10);
+          const phase = mochaPhaseForDate(new Date());
+          return (
+            <MochaView
+              T={T}
+              todayStr={todayStr} phase={phase}
+              mochaSessionLog={mochaSessionLog} toggleMochaSession={toggleMochaSession}
+              mochaCommandScores={mochaCommandScores} setMochaCommandScore={setMochaCommandScore}
+              mochaBitingLog={mochaBitingLog} addMochaBitingEntry={addMochaBitingEntry} removeMochaBitingEntry={removeMochaBitingEntry}
+              mochaPottyLog={mochaPottyLog} saveMochaPotty={saveMochaPotty}
+              mochaWeeklyNotes={mochaWeeklyNotes} saveMochaWeeklyNote={saveMochaWeeklyNote}
+            />
+          );
+        })()}
+
         {/* ── WEEK VIEW ── */}
         {view === "week" && (
           <div>
-            {/* Week nav */}
-            <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:14 }}>
-              <button onClick={() => setWeekIdx(Math.max(0,weekIdx-1))} disabled={weekIdx===0} style={{ background:"none", border:`1px solid ${T.muted}`, borderRadius:5, padding:"3px 9px", color:weekIdx===0?T.textVeryDim:T.textMid, cursor:weekIdx===0?"default":"pointer", fontFamily:"inherit" }}>←</button>
-              <div style={{ flex:1 }}>
+            {/* Week info */}
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
+              <div>
                 <span style={{ fontSize:14, color:T.text }}>Week {currentWeek.week}</span>
                 <span style={{ fontSize:11, color:T.textFaint, marginLeft:8 }}>of {weeks.length} · {PHASE_META[trainingPhase].label}</span>
               </div>
               <span style={{ fontSize:12, color:ac }}>{weekPct}%</span>
-              <button onClick={() => setWeekIdx(Math.min(weeks.length-1,weekIdx+1))} disabled={weekIdx===weeks.length-1} style={{ background:"none", border:`1px solid ${T.muted}`, borderRadius:5, padding:"3px 9px", color:weekIdx===weeks.length-1?T.textVeryDim:T.textMid, cursor:weekIdx===weeks.length-1?"default":"pointer", fontFamily:"inherit" }}>→</button>
             </div>
             <div style={{ height:2, background:T.input, borderRadius:2, marginBottom:16, overflow:"hidden" }}>
               <div style={{ height:"100%", width:`${weekPct}%`, background:ac, transition:"width 0.4s" }} />
@@ -1567,22 +2438,28 @@ function App() {
                           {/* Compact summary if logged */}
                           {wd && !isEditing && (
                             <div style={{ background:tc+"0d", border:`1px solid ${tc}33`, borderRadius:6, padding:"8px 10px", marginBottom:6 }}>
-                              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
-                                <span style={{ fontSize:10, textTransform:"uppercase", letterSpacing:"0.1em", color:tc }}>Workout logged</span>
-                                <div style={{ display:"flex", gap:10 }}>
-                                  {wd.hrBefore && <span style={{ fontSize:11, color:T.textMid }}>HR before: <span style={{ color:tc }}>{wd.hrBefore}</span></span>}
-                                  {wd.hrAfter  && <span style={{ fontSize:11, color:T.textMid }}>after: <span style={{ color:tc }}>{wd.hrAfter}</span></span>}
-                                  {wd.difficulty && <span style={{ fontSize:11, color:T.textMid }}>diff: <span style={{ color:tc }}>{wd.difficulty}/10</span></span>}
-                                </div>
+                              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
+                                <span style={{ fontSize:10, textTransform:"uppercase", letterSpacing:"0.1em", color:tc }}>Session logged ✓</span>
+                                <span style={{ fontSize:10, color:T.textFaint }}>{wd.exercises?.filter(e=>e.name).length || 0} exercises</span>
                               </div>
                               {wd.exercises?.filter(e=>e.name).map((ex,i) => (
-                                <div key={i} style={{ fontSize:11, color:T.textDim, marginBottom:2 }}>
-                                  <span style={{ color:T.textSub }}>{ex.name}</span>
-                                  {ex.sets && <span style={{ color:T.textDim }}> · {ex.sets}×{ex.reps}{ex.weight ? ` @ ${ex.weight}` : ""}</span>}
-                                  {ex.holdTime && <span style={{ color:T.textDim }}> · {ex.holdTime}{ex.contractions ? ` · ${ex.contractions} contractions` : ""}</span>}
-                                  {ex.distance && <span style={{ color:T.textDim }}> · {ex.distance}{ex.time ? ` in ${ex.time}` : ""}</span>}
-                                  {ex.duration && !ex.distance && <span style={{ color:T.textDim }}> · {ex.duration}</span>}
-                                  {ex.notes && <span style={{ color:T.textFaint, fontStyle:"italic" }}> — {ex.notes}</span>}
+                                <div key={i} style={{ marginBottom:6 }}>
+                                  <div style={{ fontSize:12, color:T.textSub, marginBottom:2 }}>
+                                    {ex.name}
+                                    {ex.detail && <span style={{ color:T.textFaint, fontSize:11 }}> — {ex.detail}</span>}
+                                  </div>
+                                  {ex.sets?.length > 0 && (
+                                    <div style={{ display:"grid", gridTemplateColumns:"24px 60px 60px 50px", gap:4, marginLeft:8 }}>
+                                      {ex.sets.map((s,si) => (
+                                        <Fragment key={s.id}>
+                                          <span style={{ fontSize:10, color:T.textFaint }}>{si+1}</span>
+                                          <span style={{ fontSize:10, color:T.textMid }}>↑{s.pulseBefore||"X"}</span>
+                                          <span style={{ fontSize:10, color:tc }}>↓{s.pulseAfter||"—"}</span>
+                                          <span style={{ fontSize:10, color:T.textFaint }}>d:{s.difficulty||"—"}</span>
+                                        </Fragment>
+                                      ))}
+                                    </div>
+                                  )}
                                 </div>
                               ))}
                               {wd.sessionNotes && <div style={{ fontSize:11, color:T.textDim, fontStyle:"italic", marginTop:4 }}>{wd.sessionNotes}</div>}
@@ -1656,6 +2533,44 @@ function App() {
         {view === "life" && (
           <div>
             <h2 style={{ fontSize:16, fontWeight:400, margin:"0 0 16px", color:ac }}>Life Admin</h2>
+
+            {/* Homeschool */}
+            {(() => {
+              const todayStr = new Date().toISOString().slice(0,10);
+              const today = homeschoolLog[todayStr] || {};
+              return (
+                <div style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:8, padding:14, marginBottom:16 }}>
+                  <div style={{ fontSize:11, textTransform:"uppercase", letterSpacing:"0.12em", color:T.textMid, marginBottom:10 }}>Homeschool · Today</div>
+                  <div onClick={() => saveHomeschool(todayStr, { handwriting: !today.handwriting })} style={{
+                    display:"flex", alignItems:"center", gap:9, cursor:"pointer", marginBottom:10,
+                    background: today.handwriting ? ac+"15" : "transparent", borderRadius:6, padding:"6px 8px",
+                  }}>
+                    <div style={{ width:15, height:15, borderRadius:4, border:`1px solid ${today.handwriting?ac:T.border}`,
+                      background:today.handwriting?ac:"transparent", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                      {today.handwriting && <span style={{ fontSize:9, color:"#fff" }}>✓</span>}
+                    </div>
+                    <span style={{ fontSize:13, color:today.handwriting?ac:T.textSub }}>Handwriting practice</span>
+                  </div>
+
+                  <div style={{ fontSize:10, color:T.textMid, marginBottom:6 }}>Today's skill (pick whatever fits their energy)</div>
+                  <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:10 }}>
+                    {HOMESCHOOL_SKILLS.map(s => (
+                      <button key={s} onClick={() => saveHomeschool(todayStr, { skill: today.skill===s?"":s })} style={{
+                        padding:"5px 11px", borderRadius:14, fontSize:11, cursor:"pointer",
+                        border:`1px solid ${today.skill===s ? ac : T.border}`,
+                        background: today.skill===s ? ac+"22" : "transparent",
+                        color: today.skill===s ? ac : T.textFaint, fontFamily:"inherit",
+                      }}>{s}</button>
+                    ))}
+                  </div>
+                  {today.skill && (
+                    <input value={today.skillNotes||""} onChange={e=>saveHomeschool(todayStr,{skillNotes:e.target.value})}
+                      placeholder={`Notes on today's ${today.skill.toLowerCase()}...`}
+                      style={{ ...inputStyle }} />
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Weekly reflection */}
             <div style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:8, padding:14, marginBottom:16 }}>
@@ -1746,6 +2661,53 @@ function App() {
         )}
 
         {/* ── TRAINING LOG VIEW ── */}
+        {/* ── MANUAL VIEW ── */}
+        {view === "manual" && (() => {
+          const grouped = {};
+          manualEntries.forEach(e => {
+            const key = e.checklistItemText || "General";
+            if (!grouped[key]) grouped[key] = [];
+            grouped[key].push(e);
+          });
+          const items = Object.entries(grouped);
+          return (
+            <div>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:16 }}>
+                <div>
+                  <h2 style={{ fontSize:16, fontWeight:400, margin:"0 0 4px", color:ac }}>SOP Manual</h2>
+                  <p style={{ margin:0, fontSize:12, color:T.textMid, fontStyle:"italic" }}>Building the Moorlands manual as you go — {manualEntries.length} entries logged</p>
+                </div>
+                {manualEntries.length > 0 && (
+                  <button onClick={exportManual} style={{ padding:"7px 16px", background:ac, border:"none", borderRadius:5, color:"#fff", cursor:"pointer", fontSize:12, fontWeight:600, fontFamily:"inherit", whiteSpace:"nowrap" }}>Export ↓</button>
+                )}
+              </div>
+
+              {items.length === 0 ? (
+                <div style={{ textAlign:"center", padding:"40px 20px", color:T.textFaint, fontStyle:"italic" }}>
+                  No entries yet. Go to the Camp tab and tap "+ log for manual" on any checklist item to start building your manual.
+                </div>
+              ) : (
+                items.map(([item, entries]) => (
+                  <div key={item} style={{ marginBottom:18, background:T.surface, border:`1px solid ${T.border}`, borderRadius:9, padding:14 }}>
+                    <div style={{ fontSize:13, color:ac, marginBottom:10 }}>{item}</div>
+                    {entries.sort((a,b) => b.date.localeCompare(a.date)).map(e => (
+                      <div key={e.id} style={{ marginBottom:10, paddingBottom:10, borderBottom:`1px solid ${T.border}` }}>
+                        <div style={{ display:"flex", justifyContent:"space-between" }}>
+                          <span style={{ fontSize:11, color:T.textFaint }}>{e.date}</span>
+                          <button onClick={() => removeManualEntry(e.id)} style={{ background:"none", border:"none", color:T.textFaint, cursor:"pointer", fontSize:12 }}>✕</button>
+                        </div>
+                        {e.whatDid && <div style={{ fontSize:12, color:T.textSub, marginTop:4 }}><span style={{ color:T.textDim }}>What:</span> {e.whatDid}</div>}
+                        {e.why && <div style={{ fontSize:12, color:T.textSub, marginTop:2 }}><span style={{ color:T.textDim }}>Why:</span> {e.why}</div>}
+                        {e.lessons && <div style={{ fontSize:12, color:T.textSub, marginTop:2, fontStyle:"italic" }}><span style={{ color:T.textDim }}>Lessons:</span> {e.lessons}</div>}
+                      </div>
+                    ))}
+                  </div>
+                ))
+              )}
+            </div>
+          );
+        })()}
+
         {view === "log" && (
           <div>
             <h2 style={{ fontSize:16, fontWeight:400, margin:"0 0 4px", color:ac }}>Training Log</h2>

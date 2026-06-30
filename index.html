@@ -467,6 +467,28 @@ const HOMESCHOOL_SKILLS = [
   "Photography", "Gardening", "Other",
 ];
 
+// ─── DAILY NON-NEGOTIABLES ────────────────────────────────────────────────────
+const DAILY_MUSTS = [
+  { id:"breathwork_skool", label:"Breathwork practice (Skool)", icon:"🌬" },
+  { id:"four_part_breath", label:"4 Part Breath", icon:"🫁" },
+  { id:"dive_video", label:"Watch dive video", icon:"🎥" },
+];
+
+// ─── TODAY TO-DO CATEGORIES ────────────────────────────────────────────────────
+const TODO_CATEGORIES = [
+  { key:"Dive Training", color:"#4aaa92", icon:"🌊" },
+  { key:"Camp", color:"#c4873a", icon:"🏕" },
+  { key:"Mocha", color:"#7a9c5b", icon:"🐾" },
+  { key:"Homeschool", color:"#5a8fd0", icon:"📚" },
+  { key:"Honeysuckle", color:"#c47ca0", icon:"🍯" },
+  { key:"Life Admin", color:"#8a7a5b", icon:"📋" },
+  { key:"Other", color:"#888", icon:"✦" },
+];
+
+function isFastingDay(date) {
+  return date.getDay() === 5; // Friday
+}
+
 const WEEKS = {
   pre: [
     { week:1, sessions:{
@@ -1689,6 +1711,14 @@ function App() {
   // Homeschool
   const [homeschoolLog, setHomeschoolLog] = useState({}); // { "2026-07-05": { handwriting: true, skill: "Art", skillNotes: "..." } }
 
+  // Daily non-negotiables (every day, every category)
+  const [dailyMustsLog, setDailyMustsLog] = useState({}); // { "2026-07-05": { breathwork_skool: true, four_part_breath: true, dive_video: true } }
+
+  // Today's freeform to-do list, broken down by category
+  const [todoLog, setTodoLog] = useState({}); // { "2026-07-05": [{ id, category, text, done }] }
+  const [newTodoText, setNewTodoText] = useState("");
+  const [newTodoCategory, setNewTodoCategory] = useState("Dive Training");
+
   // Training log
   const [staticLog, setStaticLog] = useState([]);
   const [newStatic, setNewStatic] = useState({ date:"", rhr:"", h1:"", h2:"", h3:"", notes:"" });
@@ -1736,6 +1766,8 @@ function App() {
         setMochaWeeklyNotes(d.mochaWeeklyNotes || {});
         setManualEntries(d.manualEntries || []);
         setHomeschoolLog(d.homeschoolLog || {});
+        setDailyMustsLog(d.dailyMustsLog || {});
+        setTodoLog(d.todoLog || {});
         if (d.cyclePhase) setCyclePhase(d.cyclePhase);
         if (d.cycleStartDate) {
           setCycleStartDate(d.cycleStartDate);
@@ -1766,7 +1798,7 @@ function App() {
       const data = { checked, dayNotes, staticLog, bills, weeklyReflection, mealPlan,
         cyclePhase, cycleDay, cycleStartDate, bleedDays, feelingsLog, workoutLog, darkMode,
         campChecks, campNotes, mochaSessionLog, mochaCommandScores, mochaBitingLog,
-        mochaPottyLog, mochaWeeklyNotes, manualEntries, homeschoolLog, ...updates };
+        mochaPottyLog, mochaWeeklyNotes, manualEntries, homeschoolLog, dailyMustsLog, todoLog, ...updates };
       localStorage.setItem("rhythm_v3", JSON.stringify(data));
     } catch {}
   }
@@ -1898,6 +1930,37 @@ function App() {
     persist({ homeschoolLog: next });
   }
 
+  // ── Daily musts ──
+  function toggleDailyMust(dateStr, mustId) {
+    const day = dailyMustsLog[dateStr] || {};
+    const next = { ...dailyMustsLog, [dateStr]: { ...day, [mustId]: !day[mustId] } };
+    setDailyMustsLog(next);
+    persist({ dailyMustsLog: next });
+  }
+
+  // ── Today's categorized to-do list ──
+  function addTodo(dateStr, category, text) {
+    if (!text.trim()) return;
+    const dayList = todoLog[dateStr] || [];
+    const next = { ...todoLog, [dateStr]: [...dayList, { id: Date.now(), category, text: text.trim(), done:false }] };
+    setTodoLog(next);
+    persist({ todoLog: next });
+  }
+
+  function toggleTodo(dateStr, id) {
+    const dayList = todoLog[dateStr] || [];
+    const next = { ...todoLog, [dateStr]: dayList.map(t => t.id===id ? {...t, done:!t.done} : t) };
+    setTodoLog(next);
+    persist({ todoLog: next });
+  }
+
+  function removeTodo(dateStr, id) {
+    const dayList = todoLog[dateStr] || [];
+    const next = { ...todoLog, [dateStr]: dayList.filter(t => t.id!==id) };
+    setTodoLog(next);
+    persist({ todoLog: next });
+  }
+
   function toggleTask(key) {
     const next = { ...checked, [key]: !checked[key] };
     setChecked(next);
@@ -2026,6 +2089,100 @@ function App() {
           const tc = todaySession ? getTc(todaySession.type) : ac;
           const isShabbat = todaySession?.type === "shabbat";
           const todayWod = workoutLog[todayDk];
+          const todayStr = new Date().toISOString().slice(0,10);
+
+          // ── AUTO-AGGREGATED "EVERYTHING TODAY" LIST ──
+          // Pulls real scheduled items from every section so the dashboard is one source of truth
+          const aggregatedToday = [];
+
+          // 1. Dive Training — today's session tasks
+          if (todaySession && !isShabbat) {
+            todaySession.tasks.forEach((task, ti) => {
+              aggregatedToday.push({
+                category:"Dive Training", color:TRAINING_C.pool, icon:"🌊",
+                text:task, done: !!checked[`${todayDk}_${ti}`],
+                onToggle: () => toggleTask(`${todayDk}_${ti}`),
+              });
+            });
+          }
+
+          // 2. Daily Musts
+          DAILY_MUSTS.forEach(m => {
+            aggregatedToday.push({
+              category:"Daily Musts", color:"#5bb8a0", icon:m.icon,
+              text:m.label, done: !!(dailyMustsLog[todayStr]||{})[m.id],
+              onToggle: () => toggleDailyMust(todayStr, m.id),
+            });
+          });
+
+          // 3. Camp — morning/midday/evening checklist items for today
+          Object.entries(CAMP_DAILY).forEach(([period, data]) => {
+            data.groups.forEach(g => {
+              g.items.forEach(item => {
+                const key = `${todayStr}_${period}_${item.id}`;
+                aggregatedToday.push({
+                  category:"Camp", color:ACCENT.amber, icon: item.critical ? "⚠" : "🏕",
+                  text:item.text, done: !!campChecks[key],
+                  onToggle: () => toggleCampCheck(key),
+                });
+              });
+            });
+          });
+          // Camp weekly item for today's day of week
+          const campWeeklyToday = CAMP_WEEKLY[todayDay];
+          if (campWeeklyToday && campWeeklyToday.items.length > 0) {
+            campWeeklyToday.items.forEach(item => {
+              const key = `${todayStr}_weekly_${todayDay}_${item.id}`;
+              aggregatedToday.push({
+                category:"Camp", color:ACCENT.amber, icon: item.critical ? "⚠" : "🏕",
+                text:item.text, done: !!campChecks[key],
+                onToggle: () => toggleCampCheck(key),
+              });
+            });
+          }
+
+          // 4. Mocha — today's session template
+          MOCHA_SESSION_TEMPLATE.forEach(s => {
+            aggregatedToday.push({
+              category:"Mocha", color:"#7a9c5b", icon:s.icon,
+              text:s.label, done: !!(mochaSessionLog[todayStr]||{})[s.id],
+              onToggle: () => toggleMochaSession(todayStr, s.id),
+            });
+          });
+
+          // 5. Homeschool — handwriting + skill if chosen
+          const todayHomeschool = homeschoolLog[todayStr] || {};
+          aggregatedToday.push({
+            category:"Homeschool", color:"#5a8fd0", icon:"📚",
+            text:"Handwriting practice", done: !!todayHomeschool.handwriting,
+            onToggle: () => saveHomeschool(todayStr, { handwriting: !todayHomeschool.handwriting }),
+          });
+          if (todayHomeschool.skill) {
+            aggregatedToday.push({
+              category:"Homeschool", color:"#5a8fd0", icon:"📚",
+              text:`Skill: ${todayHomeschool.skill}`, done: !!todayHomeschool.skillDone,
+              onToggle: () => saveHomeschool(todayStr, { skillDone: !todayHomeschool.skillDone }),
+            });
+          }
+
+          // 6. Manually added extras (freeform, still supported for one-off tasks)
+          const extraTodos = (todoLog[todayStr] || []).filter(t => !t.done);
+          extraTodos.forEach(t => {
+            const cat = TODO_CATEGORIES.find(c => c.key === t.category) || TODO_CATEGORIES[TODO_CATEGORIES.length-1];
+            aggregatedToday.push({
+              category:t.category, color:cat.color, icon:cat.icon,
+              text:t.text, done:false,
+              onToggle: () => toggleTodo(todayStr, t.id),
+              onRemove: () => removeTodo(todayStr, t.id),
+              isExtra: true,
+            });
+          });
+
+          const aggByCategory = {};
+          aggregatedToday.forEach(item => { (aggByCategory[item.category] = aggByCategory[item.category]||[]).push(item); });
+          const aggCategoryOrder = ["Dive Training","Daily Musts","Camp","Mocha","Homeschool","Honeysuckle","Life Admin","Other"];
+          const aggTotalDone = aggregatedToday.filter(i=>i.done).length;
+          const aggTotal = aggregatedToday.length;
 
           // Week training stats
           const trainingSessions = DAYS.filter(d => {
@@ -2125,7 +2282,77 @@ function App() {
                 </div>
               </div>
 
-              {/* TODAY CARD */}
+              {/* Fasting day banner */}
+              {isFastingDay(new Date()) && (
+                <div style={{ background:"#7a4a3015", border:"1px solid #7a4a3044", borderRadius:9, padding:"10px 14px", marginBottom:16, display:"flex", alignItems:"center", gap:10 }}>
+                  <span style={{ fontSize:16 }}>🕊</span>
+                  <div>
+                    <span style={{ fontSize:13, color:"#c4905a" }}>Fasting day</span>
+                    <span style={{ fontSize:11, color:T.textFaint, marginLeft:8 }}>Friday — go gently with training intensity today</span>
+                  </div>
+                </div>
+              )}
+
+              {/* EVERYTHING TODAY — master aggregated checklist */}
+              <div style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:10, padding:14, marginBottom:16 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+                  <span style={{ fontSize:10, textTransform:"uppercase", letterSpacing:"0.14em", color:T.textFaint }}>Everything Today</span>
+                  <span style={{ fontSize:11, color: aggTotalDone===aggTotal && aggTotal>0 ? "#5bb8a0" : T.textFaint }}>{aggTotalDone}/{aggTotal}</span>
+                </div>
+
+                {aggTotal === 0 ? (
+                  <div style={{ fontSize:12, color:T.textVeryDim, fontStyle:"italic" }}>Nothing scheduled today — Shabbat rest, or check the Week tab.</div>
+                ) : (
+                  aggCategoryOrder.filter(cat => aggByCategory[cat]?.length > 0).map(cat => {
+                    const items = aggByCategory[cat];
+                    const catColor = items[0].color;
+                    const catIcon = items[0].icon;
+                    const catDone = items.filter(i=>i.done).length;
+                    return (
+                      <div key={cat} style={{ marginBottom:14 }}>
+                        <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
+                          <span style={{ fontSize:13 }}>{catIcon}</span>
+                          <span style={{ fontSize:11, color:catColor, fontWeight:600 }}>{cat}</span>
+                          <span style={{ fontSize:10, color:T.textFaint }}>{catDone}/{items.length}</span>
+                        </div>
+                        {items.map((item, ii) => (
+                          <div key={ii} style={{ display:"flex", alignItems:"center", gap:9, paddingLeft:6, marginBottom:4 }}>
+                            <div onClick={item.onToggle} style={{
+                              width:15, height:15, borderRadius:4, flexShrink:0, cursor:"pointer",
+                              border:`1px solid ${item.done?catColor:T.border}`, background:item.done?catColor:"transparent",
+                              display:"flex", alignItems:"center", justifyContent:"center",
+                            }}>{item.done && <span style={{ fontSize:9, color:"#fff" }}>✓</span>}</div>
+                            <span onClick={item.onToggle} style={{ flex:1, fontSize:13, color:item.done?T.textFaint:T.textSub, textDecoration:item.done?"line-through":"none", cursor:"pointer" }}>{item.text}</span>
+                            {item.isExtra && <button onClick={item.onRemove} style={{ background:"none", border:"none", color:T.textVeryDim, cursor:"pointer", fontSize:12, padding:"0 2px" }}>✕</button>}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })
+                )}
+
+                {/* Add a one-off extra task */}
+                <div style={{ display:"flex", gap:6, marginTop:6, flexWrap:"wrap", paddingTop:10, borderTop:`1px solid ${T.border}` }}>
+                  <select value={newTodoCategory} onChange={e=>setNewTodoCategory(e.target.value)} style={{
+                    background:T.input, border:`1px solid ${T.inputBorder}`, borderRadius:5, padding:"6px 8px",
+                    color:T.text, fontSize:11, fontFamily:"inherit",
+                  }}>
+                    {TODO_CATEGORIES.map(c => <option key={c.key} value={c.key}>{c.icon} {c.key}</option>)}
+                  </select>
+                  <input value={newTodoText} onChange={e=>setNewTodoText(e.target.value)}
+                    onKeyDown={e => { if (e.key==="Enter") { addTodo(todayStr, newTodoCategory, newTodoText); setNewTodoText(""); } }}
+                    placeholder="Add a one-off task..."
+                    style={{ flex:1, minWidth:120, background:T.input, border:`1px solid ${T.inputBorder}`, borderRadius:5,
+                      padding:"6px 9px", color:T.text, fontSize:12, fontFamily:"inherit" }} />
+                  <button onClick={() => { addTodo(todayStr, newTodoCategory, newTodoText); setNewTodoText(""); }} style={{
+                    padding:"6px 14px", background:ac+"22", border:`1px solid ${ac}55`, borderRadius:5,
+                    color:ac, cursor:"pointer", fontSize:12, fontFamily:"inherit",
+                  }}>+ Add</button>
+                </div>
+              </div>
+
+
+              {/* TODAY CARD — David Lee programme session */}
               <div style={{ background: isShabbat ? T.surface : T.card, border:`1px solid ${tc}55`, borderLeft:`3px solid ${tc}`, borderRadius:10, padding:16, marginBottom:16 }}>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:12 }}>
                   <div>

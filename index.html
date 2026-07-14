@@ -34,6 +34,8 @@ const { useState, useEffect, Fragment } = React;
 
 
 
+
+
 // ─── THEME ───────────────────────────────────────────────────────────────────
 function makeTheme(dark) {
   return {
@@ -485,9 +487,257 @@ const TODO_CATEGORIES = [
   { key:"Other", color:"#888", icon:"✦" },
 ];
 
+// ─── DAILY RHYTHM TRACKS ──────────────────────────────────────────────────────
+// Track A = Standard days (Mon, Wed, Fri, Sun) — training at 1pm, full morning spirit
+// Track B = Pool days (Tue, Thu, Sat) — pool at 5am, spirit block post-swim
+// Think of these like two engine configurations in the same car.
+// Same destination, same fuel — just different sequencing of when the engine runs hottest.
+
+const TRACK_A_PRECAMP = [
+  { time:"4:30", label:"Wake", detail:"Water, no phone", icon:"🌅", category:"anchor" },
+  { time:"4:45", label:"Spirit block", detail:"Devotions + 4 Part Breath + meditation", icon:"🌿", category:"spirit" },
+  { time:"5:30", label:"Skool breathwork", detail:"Breathwork practice from Skool", icon:"🌬", category:"spirit" },
+  { time:"5:50", label:"Dive video", detail:"Watch one dive video", icon:"🎥", category:"spirit" },
+  { time:"6:10", label:"Mocha morning walk", detail:"30+ min — long line, potty, decompress", icon:"🐾", category:"mocha" },
+  { time:"6:45", label:"Breakfast + kids up", detail:"Eat properly, settle the kids", icon:"🍳", category:"anchor" },
+  { time:"7:15", label:"Homeschool", detail:"Handwriting + one floating skill", icon:"📚", category:"homeschool" },
+  { time:"8:30", label:"Sports equipment check", detail:"5 min — inspect, done", icon:"⚽", category:"kids" },
+  { time:"8:35", label:"Buffer", detail:"Flex — nothing scheduled here intentionally", icon:"·", category:"flex" },
+  { time:"9:00", label:"Honeysuckle", detail:"Mon only — content creation 1 hr", icon:"🍯", category:"honeysuckle", monOnly:true },
+  { time:"10:00", label:"Kids time", detail:"Unstructured — present but not running it", icon:"🧡", category:"kids" },
+  { time:"12:00", label:"Lunch + rest", detail:"Real rest. The daily pressure valve. Non-negotiable.", icon:"🛋", category:"anchor" },
+  { time:"1:00", label:"Mocha midday training", detail:"10 min structured session", icon:"🐾", category:"mocha" },
+  { time:"1:15", label:"Train", detail:"Exercise — 1 to 1.5 hrs", icon:"💪", category:"training" },
+  { time:"2:45", label:"Recovery", detail:"Stretch, shower, decompress", icon:"🚿", category:"anchor" },
+  { time:"3:15", label:"Admin block", detail:"Emails, refunds, payments, SOP — 1 to 1.5 hrs", icon:"📋", category:"admin" },
+  { time:"4:45", label:"Family time", detail:"Cook together, Norah bike, connection", icon:"🌻", category:"kids" },
+  { time:"6:00", label:"Mocha evening training", detail:"10 min structured session", icon:"🐾", category:"mocha" },
+  { time:"6:30", label:"Dinner", detail:"Sit together — protected, no screens", icon:"🌙", category:"anchor" },
+  { time:"7:15", label:"Tidy + wind-down", detail:"Kids to bed, light tidy", icon:"🧹", category:"anchor" },
+  { time:"8:00", label:"Ben time", detail:"Sit, talk, just be — this is the marriage maintenance slot", icon:"❤️", category:"anchor", critical:true },
+  { time:"9:00", label:"Prep tomorrow", detail:"15 min — lay the track so the train just runs", icon:"📓", category:"anchor" },
+  { time:"9:30", label:"Lights out", detail:"", icon:"🌑", category:"anchor" },
+];
+
+const TRACK_A_CAMP = [
+  { time:"4:30", label:"Wake", detail:"Water, no phone", icon:"🌅", category:"anchor" },
+  { time:"4:45", label:"Spirit block", detail:"Devotions + 4 Part Breath + meditation", icon:"🌿", category:"spirit" },
+  { time:"5:30", label:"Skool breathwork", detail:"Breathwork practice from Skool", icon:"🌬", category:"spirit" },
+  { time:"5:50", label:"Dive video", detail:"Watch one dive video", icon:"🎥", category:"spirit" },
+  { time:"6:10", label:"Mocha morning walk", detail:"30+ min — before camp wakes up", icon:"🐾", category:"mocha" },
+  { time:"6:45", label:"Breakfast", detail:"Eat before the day starts", icon:"🍳", category:"anchor" },
+  { time:"7:15", label:"Site walkthrough", detail:"Water supply first — always. Then full site check.", icon:"💧", category:"camp", critical:true },
+  { time:"7:45", label:"Kitchen check-in", detail:"Before 8am — meals on schedule, menu approved", icon:"🍽", category:"camp" },
+  { time:"8:00", label:"Commandant check-in", detail:"Morning — brief, focused", icon:"🏕", category:"camp" },
+  { time:"8:30", label:"Homeschool + kids", detail:"Handwriting + floating skill", icon:"📚", category:"homeschool" },
+  { time:"9:30", label:"Camp admin", detail:"Registration portal, Nastasia, emails", icon:"📋", category:"admin" },
+  { time:"10:30", label:"Kids / buffer", detail:"Flex — camp issues or family time", icon:"🧡", category:"flex" },
+  { time:"12:00", label:"Midday water check + lunch", detail:"Second daily water check. Then rest — protected.", icon:"💧", category:"camp", critical:true },
+  { time:"1:00", label:"Mocha midday training", detail:"10 min structured session", icon:"🐾", category:"mocha" },
+  { time:"1:15", label:"Train", detail:"Exercise — 1 to 1.5 hrs", icon:"💪", category:"training" },
+  { time:"2:45", label:"Recovery + shower", detail:"Decompress properly", icon:"🚿", category:"anchor" },
+  { time:"3:15", label:"Moorlands admin block", detail:"Emails, refunds, payments, SOP — 1 to 1.5 hrs", icon:"📋", category:"admin" },
+  { time:"4:45", label:"Family time", detail:"Cook, Norah bike, connection", icon:"🌻", category:"kids" },
+  { time:"6:00", label:"Commandant evening check", detail:"Dinner check-in — brief and purposeful", icon:"🏕", category:"camp" },
+  { time:"6:15", label:"Mocha evening training", detail:"10 min structured session", icon:"🐾", category:"mocha" },
+  { time:"6:30", label:"Dinner", detail:"Sit together — protected", icon:"🌙", category:"anchor" },
+  { time:"7:15", label:"Tidy + kids wind-down", detail:"", icon:"🧹", category:"anchor" },
+  { time:"8:00", label:"Ben time", detail:"Protected. The invisible output that holds everything together.", icon:"❤️", category:"anchor", critical:true },
+  { time:"9:00", label:"Prep + site secure", detail:"Quick check, log anything for morning", icon:"📓", category:"anchor" },
+  { time:"9:30", label:"Lights out", detail:"", icon:"🌑", category:"anchor" },
+];
+
+const TRACK_B_PRECAMP = [
+  { time:"4:30", label:"Wake", detail:"Water, no phone", icon:"🌅", category:"anchor" },
+  { time:"4:40", label:"4 Part Breath", detail:"10 rounds — pre-flight checklist before the pool. Tills the soil.", icon:"🌬", category:"spirit" },
+  { time:"4:55", label:"Drive to pool", detail:"15 min — buddy already confirmed", icon:"🚗", category:"anchor" },
+  { time:"5:10", label:"Pool session", detail:"David Lee programme — 60 to 90 min. This is the engine running hottest.", icon:"🌊", category:"training", critical:true },
+  { time:"6:40", label:"Drive home", detail:"15 min", icon:"🚗", category:"anchor" },
+  { time:"7:00", label:"Mocha morning walk", detail:"30+ min — long line, decompress together after the water", icon:"🐾", category:"mocha" },
+  { time:"7:30", label:"Breakfast", detail:"Eat properly — post-swim nutrition matters", icon:"🍳", category:"anchor" },
+  { time:"8:00", label:"Spirit block", detail:"Devotions + Skool breathwork + meditation + dive video. Post-swim stillness is the deepest quiet of the day — seeds land in tilled soil.", icon:"🌿", category:"spirit" },
+  { time:"9:00", label:"Kids + homeschool", detail:"Handwriting + floating skill", icon:"📚", category:"homeschool" },
+  { time:"10:00", label:"Kids time / buffer", detail:"Unstructured, flex", icon:"🧡", category:"flex" },
+  { time:"12:00", label:"Lunch + rest", detail:"Real rest — the pressure valve. Especially important on pool days.", icon:"🛋", category:"anchor" },
+  { time:"1:00", label:"Mocha midday training", detail:"10 min structured session", icon:"🐾", category:"mocha" },
+  { time:"1:15", label:"Admin block", detail:"Emails, Moorlands admin, SOP — 1 to 1.5 hrs", icon:"📋", category:"admin" },
+  { time:"2:45", label:"Recovery", detail:"Stretch, light movement — you already trained", icon:"🚿", category:"anchor" },
+  { time:"3:30", label:"Family / kids", detail:"Norah bike, outdoors, connection", icon:"🌻", category:"kids" },
+  { time:"5:30", label:"Mocha evening training", detail:"10 min structured session", icon:"🐾", category:"mocha" },
+  { time:"6:30", label:"Dinner", detail:"Sit together — protected", icon:"🌙", category:"anchor" },
+  { time:"7:15", label:"Tidy + kids wind-down", detail:"", icon:"🧹", category:"anchor" },
+  { time:"8:00", label:"Ben time", detail:"Protected. Same as every day.", icon:"❤️", category:"anchor", critical:true },
+  { time:"9:00", label:"Prep tomorrow", detail:"15 min", icon:"📓", category:"anchor" },
+  { time:"9:30", label:"Lights out", detail:"", icon:"🌑", category:"anchor" },
+];
+
+const TRACK_B_CAMP = [
+  { time:"4:30", label:"Wake", detail:"Water, no phone", icon:"🌅", category:"anchor" },
+  { time:"4:40", label:"4 Part Breath", detail:"10 rounds — pre-flight before the pool", icon:"🌬", category:"spirit" },
+  { time:"4:55", label:"Drive to pool", detail:"15 min — buddy confirmed", icon:"🚗", category:"anchor" },
+  { time:"5:10", label:"Pool session", detail:"David Lee programme — 60 to 90 min", icon:"🌊", category:"training", critical:true },
+  { time:"6:40", label:"Drive home", detail:"15 min", icon:"🚗", category:"anchor" },
+  { time:"7:00", label:"Mocha morning walk", detail:"30+ min", icon:"🐾", category:"mocha" },
+  { time:"7:15", label:"Site walkthrough", detail:"Water supply first — always. Post-swim eyes see clearly.", icon:"💧", category:"camp", critical:true },
+  { time:"7:45", label:"Kitchen check-in", detail:"Before 8am — meals on schedule", icon:"🍽", category:"camp" },
+  { time:"8:00", label:"Commandant morning check", detail:"Brief, focused", icon:"🏕", category:"camp" },
+  { time:"8:15", label:"Breakfast + spirit block", detail:"Eat. Then devotions + Skool breathwork + dive video — post-swim quiet.", icon:"🌿", category:"spirit" },
+  { time:"9:15", label:"Camp admin", detail:"Registration, Nastasia, emails", icon:"📋", category:"admin" },
+  { time:"10:15", label:"Kids + homeschool", detail:"Handwriting + floating skill", icon:"📚", category:"homeschool" },
+  { time:"11:15", label:"Buffer / flex", detail:"Camp issues or family time", icon:"🧡", category:"flex" },
+  { time:"12:00", label:"Midday water check + lunch", detail:"Second water check. Then real rest.", icon:"💧", category:"camp", critical:true },
+  { time:"1:00", label:"Mocha midday training", detail:"10 min structured session", icon:"🐾", category:"mocha" },
+  { time:"1:15", label:"Moorlands admin block", detail:"Emails, refunds, payments, SOP — 1 to 1.5 hrs", icon:"📋", category:"admin" },
+  { time:"2:45", label:"Recovery", detail:"Stretch — already trained", icon:"🚿", category:"anchor" },
+  { time:"3:30", label:"Family time", detail:"Norah bike, outdoors, connection", icon:"🌻", category:"kids" },
+  { time:"5:30", label:"Mocha evening training", detail:"10 min", icon:"🐾", category:"mocha" },
+  { time:"6:00", label:"Commandant evening check", detail:"Dinner check-in", icon:"🏕", category:"camp" },
+  { time:"6:15", label:"Dinner", detail:"Sit together — protected", icon:"🌙", category:"anchor" },
+  { time:"7:15", label:"Tidy + kids wind-down", detail:"", icon:"🧹", category:"anchor" },
+  { time:"8:00", label:"Ben time", detail:"Protected. Non-negotiable.", icon:"❤️", category:"anchor", critical:true },
+  { time:"9:00", label:"Prep + site secure", detail:"Quick log, ready for morning", icon:"📓", category:"anchor" },
+  { time:"9:30", label:"Lights out", detail:"", icon:"🌑", category:"anchor" },
+];
+
+const RHYTHM_CATEGORY_COLORS = {
+  anchor:     "#888",
+  spirit:     "#5bb8a0",
+  training:   "#4aaa92",
+  camp:       "#c4873a",
+  mocha:      "#7a9c5b",
+  homeschool: "#5a8fd0",
+  admin:      "#9c7ac4",
+  kids:       "#c47ca0",
+  honeysuckle:"#c47ca0",
+  flex:       "#556",
+};
+
+function getTrack(date, isCampSeason) {
+  const dow = date.getDay(); // 0=Sun, 2=Tue, 4=Thu, 6=Sat
+  const isPoolDay = [2, 4, 6].includes(dow);
+  if (isPoolDay) return isCampSeason ? TRACK_B_CAMP : TRACK_B_PRECAMP;
+  return isCampSeason ? TRACK_A_CAMP : TRACK_A_PRECAMP;
+}
+
+function trackLabel(date) {
+  const dow = date.getDay();
+  const isPoolDay = [2, 4, 6].includes(dow);
+  return isPoolDay ? "Track B — Pool Day (5am)" : "Track A — Standard Day (1pm training)";
+}
+
 function isFastingDay(date) {
   return date.getDay() === 5; // Friday
 }
+
+// ─── ANKLE INJURY MODIFIED PROGRAMME ─────────────────────────────────────────
+// Active while injuryMode is enabled. Pool paused — Tue/Sun arms-only sessions.
+// Think of this as Phase 1.5: deepening the engine room while the vehicle is in the shop.
+// Static apnea + upper body + core. When ankle clears, pick up the programme where it should be.
+
+const INJURY_SESSIONS = {
+  Mon: {
+    type:"strength", label:"Upper Body Strength",
+    tasks:[
+      "Warm up — gentle arm circles and shoulder rolls (seated, 5 min)",
+      "Bench Press or Chest Press 3×12 — seated or lying",
+      "Chest Flies 3×12 — dumbbells on bench",
+      "Lat Pull Down 3×12 or resistance band pull-down seated",
+      "Seated Row 3×12 or resistance band row",
+      "Shoulder Press 3×12 — seated",
+      "Bicep Curl 3×12",
+      "Tricep Extension 3×12 — seated overhead",
+      "Ab Leg Raises 3×15 — lying flat, ankles relaxed",
+      "Lower Back Extensions 3×15 — lying face down ← always after abs",
+    ],
+    note:"No lower body load. Seated or lying for all movements. Ankle stays still."
+  },
+  Tue: {
+    type:"pool-apnea", label:"Pool — Arms Only + Dynamic Apnea",
+    tasks:[
+      "Enter pool safely — steps with boot off, one-leg entry",
+      "200m warm-up — arms only freestyle, ankles crossed and still",
+      "300m arms-only surface swim — breathing every 6 strokes",
+      "6 × 25m arms-only underwater dynamic apnea — surface interval 2 min",
+      "Static apnea rest set — 3 × 1:00 min static in water, full recovery between",
+      "200m arms-only cool-down — easy backstroke pull",
+      "Log: pulse after each underwater set, difficulty rating",
+    ],
+    note:"⚠ Arms only — no flutter kick, no push-off from wall with feet. Ankles stay still throughout. Buddy present."
+  },
+  Wed: {
+    type:"dry", label:"Breathwork + Static Apnea",
+    tasks:[
+      "4 Section Breathing — 10 rounds (lying or seated)",
+      "3 × max Dry Static Apnea — full recovery between each",
+      "Log all hold times and how many contractions",
+      "NPSA practice — exhale and hold, 3 × 90 sec on land",
+      "Visualisation — 5 min eyes closed, descend to 45m in your mind",
+    ],
+    note:"This is your primary training focus while the ankle heals. Go deeper here than you would if the pool were available."
+  },
+  Thu: {
+    type:"strength", label:"Upper Body Strength + Core",
+    tasks:[
+      "Warm up — gentle arm and shoulder mobility (seated, 5 min)",
+      "Shoulder Press 3×12 — seated",
+      "Lat Pull Down 3×12 or wide-grip resistance band",
+      "Chest Press 3×12",
+      "Bent-over Dumbbell Row 3×12 — seated, lean forward on bench",
+      "Bicep Curl 3×12",
+      "Tricep Overhead Extension 3×12",
+      "Ab Wheel Rollout 3×10 from knees — ankles relaxed on mat",
+      "Ab Leg Raises 3×15 — lying flat",
+      "Lower Back Extensions 3×15 ← always follows abs",
+    ],
+    note:"Progression from Monday — increase weight 5–10% where Monday felt comfortable."
+  },
+  Fri: {
+    type:"dry", label:"Breathwork + Static Apnea",
+    tasks:[
+      "4 Section Breathing — 10 rounds",
+      "3 × max Dry Static Apnea — aim to beat Wednesday's times",
+      "Log all hold times",
+      "CO2 table introduction — 8 × 1:30 min breath holds, 2 min rest between",
+      "Visualisation — mental rehearsal of dive entry and descent",
+    ],
+    note:"Fasting day — reduce intensity. Breathwork is ideal for fasting days: calm, inward, parasympathetic."
+  },
+  Sat: {
+    type:"rest", label:"Active Rest",
+    tasks:[
+      "Gentle seated stretching — shoulders, chest, upper back (15 min)",
+      "4 Section Breathing — 10 rounds",
+      "Elevate ankle above heart level for at least 30 min",
+      "Ice ankle if still swollen — 20 min on, 20 min off",
+      "Watch one dive video — note one thing to focus on when back in water",
+    ],
+    note:"Rest day. Heal. The ankle is still in active repair — giving it one full rest day per week accelerates recovery, not slows it."
+  },
+  Sun: {
+    type:"pool-apnea", label:"Pool — Arms Only + Longer Sets",
+    tasks:[
+      "Enter pool safely — steps with boot off, one-leg entry",
+      "200m warm-up — arms only easy freestyle",
+      "500m arms-only surface swim — breathing every 8 strokes",
+      "8 × 25m arms-only underwater dynamic apnea — surface interval 90 sec",
+      "2 × 50m arms-only underwater if feeling strong — surface interval 3 min",
+      "Static apnea rest set — 3 × 1:30 min in water",
+      "200m easy arms-only cool-down",
+      "Log: every set, pulse after, difficulty",
+    ],
+    note:"Sunday is your longer pool session. Push the arm pull sets. No kick. Buddy present throughout."
+  },
+};
+
+const INJURY_NOTES = [
+  "No pool push-offs, flutter kick, monofin, or any lower body pool work",
+  "No squats, lunges, leg press, calf raises, or standing exercises",
+  "No treadmill, stair work, or walking cardio",
+  "Enter and exit pool using the steps — boot off, one-leg entry, take your time",
+  "Elevate ankle above heart when resting — gravity assists drainage",
+  "Swelling at day 8+ means ligament damage is real — do not rush return to full training",
+  "Lower Back Extensions always follow any abdominal work — every session, no exceptions",
+];
 
 const WEEKS = {
   pre: [
@@ -1672,6 +1922,7 @@ function MochaView({ T, todayStr, phase, mochaSessionLog, toggleMochaSession,
 // ─── APP ─────────────────────────────────────────────────────────────────────
 function App() {
   const [darkMode, setDarkMode] = useState(true);
+  const [injuryMode, setInjuryMode] = useState(false);
   const [logoUrl, setLogoUrl] = useState("");
   const T = makeTheme(darkMode);
   const CYCLE_PHASES = makeCyclePhases(T);
@@ -1788,6 +2039,7 @@ function App() {
           if (d.cycleDay) setCycleDay(d.cycleDay);
         }
         if (d.darkMode !== undefined) setDarkMode(d.darkMode);
+        if (d.injuryMode !== undefined) setInjuryMode(d.injuryMode);
       }
     } catch {}
     // Phase and week are computed from date — nothing to set here
@@ -1796,7 +2048,7 @@ function App() {
   function persist(updates) {
     try {
       const data = { checked, dayNotes, staticLog, bills, weeklyReflection, mealPlan,
-        cyclePhase, cycleDay, cycleStartDate, bleedDays, feelingsLog, workoutLog, darkMode,
+        cyclePhase, cycleDay, cycleStartDate, bleedDays, feelingsLog, workoutLog, darkMode, injuryMode,
         campChecks, campNotes, mochaSessionLog, mochaCommandScores, mochaBitingLog,
         mochaPottyLog, mochaWeeklyNotes, manualEntries, homeschoolLog, dailyMustsLog, todoLog, ...updates };
       localStorage.setItem("rhythm_v3", JSON.stringify(data));
@@ -1807,6 +2059,12 @@ function App() {
     const next = !darkMode;
     setDarkMode(next);
     persist({ darkMode: next });
+  }
+
+  function toggleInjury() {
+    const next = !injuryMode;
+    setInjuryMode(next);
+    persist({ injuryMode: next });
   }
 
   function toggleBleedDay(date, flow) {
@@ -2044,6 +2302,14 @@ function App() {
             }}>
               {darkMode ? "☀️" : "🌙"}
             </button>
+            <button onClick={toggleInjury} title={injuryMode ? "Injury mode ON — tap to turn off" : "Tap to enable injury mode"} style={{
+              background: injuryMode ? "#c4503015" : T.muted,
+              border:`1px solid ${injuryMode ? "#c45030aa" : T.border}`, borderRadius:20,
+              padding:"5px 12px", cursor:"pointer", fontSize:13, display:"flex", alignItems:"center", gap:5,
+              color: injuryMode ? "#c45030" : T.textFaint, fontFamily:"inherit",
+            }}>
+              {injuryMode ? "🦶 Injury" : "🦶"}
+            </button>
             {/* Training phase display — auto-calculated from date */}
             {Object.entries(PHASE_META).map(([k,v]) => (
               <div key={k} style={{
@@ -2084,22 +2350,31 @@ function App() {
 
         {/* ── HOME DASHBOARD ── */}
         {view === "home" && (() => {
-          const todaySession = currentWeek.sessions[todayDay];
+          const normalSession = currentWeek.sessions[todayDay];
+          const injurySession = INJURY_SESSIONS[todayDay];
+          const activeSession = injuryMode ? injurySession : normalSession;
           const todayDk = `${trainingPhase}_w${weekIdx}_${todayDay}`;
-          const tc = todaySession ? getTc(todaySession.type) : ac;
-          const isShabbat = todaySession?.type === "shabbat";
+          const tc = activeSession ? getTc(activeSession.type) : ac;
+          const isShabbat = activeSession?.type === "shabbat";
           const todayWod = workoutLog[todayDk];
           const todayStr = new Date().toISOString().slice(0,10);
 
           // ── AUTO-AGGREGATED "EVERYTHING TODAY" LIST ──
-          // Pulls real scheduled items from every section so the dashboard is one source of truth
           const aggregatedToday = [];
 
-          // 1. Dive Training — today's session tasks
-          if (todaySession && !isShabbat) {
-            todaySession.tasks.forEach((task, ti) => {
+          // 1. Training — normal or injury-modified session tasks
+          if (activeSession && !isShabbat) {
+            const injuryLabel = injurySession?.label || "Modified Session";
+            const sessionColor = injuryMode
+              ? (activeSession.type === "pool-apnea" ? TRAINING_C.pool : activeSession.type === "dry" ? TRAINING_C.dry : TRAINING_C.strength)
+              : TRAINING_C.pool;
+            const sessionIcon = injuryMode
+              ? (activeSession.type === "pool-apnea" ? "🌊" : activeSession.type === "dry" ? "🌬" : "💪")
+              : "🌊";
+            activeSession.tasks.forEach((task, ti) => {
               aggregatedToday.push({
-                category:"Dive Training", color:TRAINING_C.pool, icon:"🌊",
+                category: injuryMode ? injuryLabel : "Dive Training",
+                color: sessionColor, icon: sessionIcon,
                 text:task, done: !!checked[`${todayDk}_${ti}`],
                 onToggle: () => toggleTask(`${todayDk}_${ti}`),
               });
@@ -2282,6 +2557,18 @@ function App() {
                 </div>
               </div>
 
+              {/* Injury mode banner */}
+              {injuryMode && (
+                <div style={{ background:"#c4503015", border:"1px solid #c4505055", borderRadius:9, padding:"10px 14px", marginBottom:12 }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
+                    <span style={{ fontSize:13, color:"#c45030" }}>🦶 Injury Mode — Ankle</span>
+                    <button onClick={toggleInjury} style={{ background:"none", border:`1px solid #c4505044`, borderRadius:5, padding:"3px 10px", color:"#c45030", cursor:"pointer", fontSize:11, fontFamily:"inherit" }}>Turn off</button>
+                  </div>
+                  <div style={{ fontSize:11, color:"#c4906090", fontStyle:"italic", marginBottom:6 }}>Sessions modified: arms-only pool Tue + Sun, upper body strength Mon + Thu, breathwork Wed + Fri, rest Sat.</div>
+                  <div style={{ fontSize:11, color:"#c4906099" }}>⚠ Pool deck only with one-leg entry. No flutter kick, no push-off, no lower body load.</div>
+                </div>
+              )}
+
               {/* Fasting day banner */}
               {isFastingDay(new Date()) && (
                 <div style={{ background:"#7a4a3015", border:"1px solid #7a4a3044", borderRadius:9, padding:"10px 14px", marginBottom:16, display:"flex", alignItems:"center", gap:10 }}>
@@ -2292,6 +2579,59 @@ function App() {
                   </div>
                 </div>
               )}
+
+              {/* DAILY RHYTHM TRACK */}
+              {(() => {
+                const today = new Date();
+                const isCampSeason = today >= new Date("2026-07-04");
+                const track = getTrack(today, isCampSeason);
+                const label = trackLabel(today);
+                const isPool = [2,4,6].includes(today.getDay());
+                const trackColor = isPool ? "#4aaa92" : "#5a8fd0";
+                const [rhythmOpen, setRhythmOpen] = useState(false);
+                return (
+                  <div style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:10, marginBottom:16, overflow:"hidden" }}>
+                    <div onClick={() => setRhythmOpen(o=>!o)} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"12px 14px", cursor:"pointer" }}>
+                      <div>
+                        <span style={{ fontSize:10, textTransform:"uppercase", letterSpacing:"0.14em", color:T.textFaint }}>Daily Rhythm</span>
+                        <div style={{ fontSize:13, color:trackColor, marginTop:2 }}>{label}</div>
+                      </div>
+                      <span style={{ fontSize:14, color:T.textFaint }}>{rhythmOpen ? "▲" : "▼"}</span>
+                    </div>
+                    {rhythmOpen && (
+                      <div style={{ padding:"0 14px 14px", borderTop:`1px solid ${T.border}` }}>
+                        <div style={{ position:"relative", paddingTop:10 }}>
+                          <div style={{ position:"absolute", left:16, top:10, bottom:0, width:1, background:`linear-gradient(180deg, ${trackColor}66, transparent)` }} />
+                          {track.map((slot, i) => {
+                            const cc = RHYTHM_CATEGORY_COLORS[slot.category] || "#888";
+                            const isAnchor = slot.category === "anchor";
+                            return (
+                              <div key={i} style={{ display:"flex", gap:12, marginBottom:10, alignItems:"flex-start" }}>
+                                <div style={{
+                                  width:32, flexShrink:0, textAlign:"right",
+                                  fontSize:10, color:T.textFaint, paddingTop:4,
+                                }}>{slot.time}</div>
+                                <div style={{
+                                  width:8, height:8, borderRadius:"50%", flexShrink:0, marginTop:5,
+                                  background: slot.critical ? "#c4873a" : isAnchor ? T.textFaint : cc,
+                                  border: slot.critical ? "2px solid #c4873a44" : "none",
+                                  zIndex:1,
+                                }} />
+                                <div style={{ flex:1 }}>
+                                  <div style={{ fontSize:13, color: slot.critical ? "#c4873a" : isAnchor ? T.textSub : cc }}>
+                                    {slot.icon} {slot.label}
+                                  </div>
+                                  {slot.detail && <div style={{ fontSize:11, color:T.textFaint, marginTop:1, lineHeight:1.4 }}>{slot.detail}</div>}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* EVERYTHING TODAY — master aggregated checklist */}
               <div style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:10, padding:14, marginBottom:16 }}>
@@ -2997,7 +3337,6 @@ function App() {
     </div>
   );
 }
-
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(React.createElement(App));
